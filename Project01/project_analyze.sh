@@ -31,6 +31,9 @@ if [ $# -gt 0 ] ; then
                 fi
             done 
             echo 'Created compile_errors.log success'
+        elif [ "$arg" = "delete-temp" ] ; then
+            git ls-files -z -o --exclude-standard | xargs -0 -I{} find '{}' -iname '*.tmp' | xargs rm
+            echo 'Deleted untracked temporary files success'
         fi
     done
 else
