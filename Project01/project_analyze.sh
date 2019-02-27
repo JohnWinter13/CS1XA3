@@ -34,6 +34,17 @@ if [ $# -gt 0 ] ; then
         elif [ "$arg" = "delete-temp" ] ; then
             git ls-files -z -o --exclude-standard | xargs -0 -I{} find '{}' -iname '*.tmp' | xargs rm
             echo 'Deleted untracked temporary files success'
+        elif [ "$arg" = "slides" ] ; then
+            mkdir slides
+            cd slides
+            for file in $(curl -L mac1xa3.ca |
+                  grep href |
+                  sed 's/.*href="//' |
+                  sed 's/".*//' |
+                  grep -E 'Slides.*.html'); do
+                curl -L -O mac1xa3.ca/$file
+            done
+            cd ..
         fi
     done
 else
