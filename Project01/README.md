@@ -14,17 +14,19 @@ Run `./project_analyze.sh <command>`
 
 Creates a todo.log file containing every line with '#TODO' in it; also displays the relative file path and line number.
 
+Note: Will overwrite todo.log when run
+
 ## 2. Count Files
 
 `./project_analyze.sh typecount`
 
-Outputs a file count for  HTML, Javascript, CSS, Python, Haskell and Bash Script files
+Outputs a file count for HTML, Javascript, CSS, Python, Haskell and Bash Script files
 
 ## 3. Delete Temporary Files
 
 `./project_analyze.sh delete-temp`
 
-Deletes all files end with .tmp and are NOT tracked by git ending in the
+Deletes all files end with .tmp and are NOT tracked by git ending in .tmp
 
 ## 4. Detect Compile Errors
 
@@ -32,8 +34,11 @@ Deletes all files end with .tmp and are NOT tracked by git ending in the
 
 Finds Haskell and Python files in the repo that fail to compile and puts them into compile_fail.log
 
+Note: Will overwrite compile_fail.log when run
+
+
 ## 5. Download 1XA3 Slides (Custom Feature)
 
 `./project_analyze.sh slides`
 
-Sends a curl to retrieve slide .html from mac1xa3.ca and puts them inside of the slides directory.
+Sends a curl request to retrieve slide .html from mac1xa3.ca and puts them inside of the slides directory.

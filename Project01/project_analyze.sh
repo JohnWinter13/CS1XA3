@@ -57,6 +57,7 @@ if [ $# -eq 1 ] ; then
             curl -L -O mac1xa3.ca/$file # -O will write the $file in the slides directory
         done
         cd ..
+        echo 'Created slides directory success'
     fi
 else
     echo "This script must take 1 argument, see docs for usage!"
