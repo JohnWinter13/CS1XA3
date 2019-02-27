@@ -26,7 +26,7 @@ Outputs a file count for HTML, Javascript, CSS, Python, Haskell and Bash Script 
 
 `./project_analyze.sh delete-temp`
 
-Deletes all files end with .tmp and are NOT tracked by git ending in .tmp
+Deletes all files ending with .tmp and are NOT tracked by git ending in .tmp
 
 ## 4. Detect Compile Errors
 
