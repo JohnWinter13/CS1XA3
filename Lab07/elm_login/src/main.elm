@@ -14,7 +14,7 @@ type Msg = GotText (Result Http.Error String)
          | Password String
          | Submit
 
-baseUrl = "https://mac1xa3.ca/e/rizkally/login/"
+baseUrl = "https://mac1xa3.ca/e/rizkally/lab7/"
 
 testPost : Model -> Cmd Msg
 testPost model  =
