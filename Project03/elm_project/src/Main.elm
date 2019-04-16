@@ -88,7 +88,13 @@ navBar = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       , div [ class "collapse navbar-collapse", id "navbarToggler" ]
         [ ul [ class "navbar-nav mr-auto mt-2 mt-lg-0" ]
           [ 
-          li [ class "nav-item dropdown" ]
+            li [ class "nav-item" ]
+            [ a [ class "nav-link"
+                , href "#"
+                , onClick (ChangePage HomePage) ]
+              [ i [ class "fas fa-home mr-2" ] [], text "Home" ]
+            ]
+          , li [ class "nav-item dropdown" ]
             [ a [ attribute "aria-expanded" "false", attribute "aria-haspopup" "true", class "nav-link dropdown-toggle", attribute "data-toggle" "dropdown", href "#", id "navbarDropdownMenuLink" ]
               [ text "Subreddit" ]
             , div [ attribute "aria-labelledby" "navbarDropdownMenuLink", class "dropdown-menu" ]
