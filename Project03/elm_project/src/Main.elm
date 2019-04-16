@@ -74,7 +74,11 @@ view model =
     [ bootstrapCSS
     , faCSS
     , formCSS
-    , nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
+    , navBar        
+    , pageToHTML model.currentPage
+    ]
+
+navBar = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       [ a [ class "navbar-brand ml-3" ]
         [ text "Reddit" ]
       , button [ attribute "aria-controls" "navbarToggler", attribute "aria-expanded" "false", attribute "aria-label" "Toggle navigation", class "navbar-toggler", attribute "data-target" "#navbarToggler", attribute "data-toggle" "collapse", type_ "button" ]
@@ -100,9 +104,7 @@ view model =
           , button [ class "btn btn-outline-primary btn-header ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
           , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]
         ]
-      ]        
-      , pageToHTML model.currentPage
-    ]
+      ]
 
 loginForm = div [ class "container" ]
   [ div [ class "row" ]
