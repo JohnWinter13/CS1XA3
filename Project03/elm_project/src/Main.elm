@@ -18,6 +18,30 @@ bootstrapCSS =
   in
     node tag attrs children
 
+faCSS = 
+  let
+    tag =  "link"
+    attrs = 
+      [ attribute "Rel" "stylesheet"
+      , attribute "property" "stylesheet"
+      , attribute "href" "https://use.fontawesome.com/releases/v5.8.1/css/all.css"
+      ]
+    children = []
+  in
+    node tag attrs children
+
+formCSS = 
+  let
+    tag =  "link"
+    attrs = 
+      [ attribute "Rel" "stylesheet"
+      , attribute "property" "stylesheet"
+      , attribute "href" "form.css"
+      ]
+    children = []
+  in
+    node tag attrs children
+
 type alias Model = { currentPage : Page
                    , task : String
                    }
@@ -32,6 +56,12 @@ init : Model
 init  = { currentPage = HomePage
         , task = ""
         }
+
+pageToHTML : Page -> Html Msg
+pageToHTML page = case page of
+    HomePage   -> div[][]
+    LoginPage  -> loginForm
+    SignupPage -> signUpForm
         
 update : Msg -> Model -> Model
 update msg model =
@@ -42,6 +72,8 @@ view : Model -> Html Msg
 view model =
   div []
     [ bootstrapCSS
+    , faCSS
+    , formCSS
     , nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       [ a [ class "navbar-brand ml-3" ]
         [ text "Reddit" ]
@@ -65,6 +97,67 @@ view model =
               ]
             ]
           ]
+          , button [ class "btn btn-outline-primary btn-header ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
+          , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]
         ]
       ]        
+      , pageToHTML model.currentPage
     ]
+
+loginForm = div [ class "container" ]
+  [ div [ class "row" ]
+    [ div [ class "col-sm-9 col-md-7 col-lg-5 mx-auto" ]
+      [ div [ class "card card-signin my-5" ]
+        [ div [ class "card-body" ]
+          [ h5 [ class "card-title text-center" ]
+            [ text "Log In" ]
+          , form [ class "form-signin" ]
+            [ div [ class "form-label-group" ]
+              [ input [ attribute "autofocus" "", class "form-control", id "inputEmail", placeholder "Email", attribute "required" "", type_ "email" ]
+                []
+              , label [ for "inputEmail" ]
+                [i [ class "fas fa-envelope mr-2" ] [], text "Email" ]
+              ]
+            , div [ class "form-label-group" ]
+              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password" ]
+                []
+              , label [ for "inputPassword" ]
+                [i [ class "fas fa-key mr-2" ] [], text "Password" ]
+              ]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit" ]
+              [ text "Log in" ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+
+signUpForm = div [ class "container" ]
+  [ div [ class "row" ]
+    [ div [ class "col-sm-9 col-md-7 col-lg-5 mx-auto" ]
+      [ div [ class "card card-signin my-5" ]
+        [ div [ class "card-body" ]
+          [ h5 [ class "card-title text-center" ]
+            [ text "Sign Up" ]
+          , form [ class "form-signin" ]
+            [ div [ class "form-label-group" ]
+              [ input [ attribute "autofocus" "", class "form-control", id "inputEmail", placeholder "Email", attribute "required" "", type_ "email" ]
+                []
+              , label [ for "inputEmail"]
+                [i [ class "fas fa-envelope mr-2" ] [], text "Email" ]
+              ]
+            , div [ class "form-label-group" ]
+              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password" ]
+                []
+              , label [ for "inputPassword" ]
+                [i [ class "fas fa-key mr-2" ] [], text "Password" ]
+              ]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit" ]
+              [ text "Sign Up" ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
