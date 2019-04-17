@@ -114,6 +114,7 @@ celerybeat-schedule
 env/
 venv/
 ENV/
+django_env
 env.bak/
 venv.bak/
 
