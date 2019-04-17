@@ -14,8 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+
+root = '' # TODO change this when deploying to 1xa3 server
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path(root + 'admin/', admin.site.urls),
+    path(root + 'userauth/', include('userauth.urls')) ,
 ]
