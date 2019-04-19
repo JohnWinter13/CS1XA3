@@ -57,6 +57,7 @@ type alias Model = { currentPage : Page
                    , username : String
                    , password : String
                    , error : String
+                   , isLoggedIn : Bool
                    }
 
 type Msg = ChangePage Page
@@ -64,8 +65,10 @@ type Msg = ChangePage Page
          | ChangePassword String
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
+         | GotLogoutResponse (Result Http.Error String)
          | PressLogin
          | PressSignup
+         | PressLogout
 
 type Page = HomePage
           | LoginPage
@@ -76,6 +79,7 @@ init _ = ({ currentPage = HomePage
           , username = ""
           , password = ""
           , error = ""
+          , isLoggedIn = False
           }
         , Cmd.none
         )
@@ -89,15 +93,21 @@ update msg model =
     GotLoginResponse result ->
             case result of
                 Ok "LoginFailed" -> ({ model | error = "Failed to login." }, Cmd.none)
-                Ok _             -> ({ model | currentPage = HomePage, error = "" }, Cmd.none)
+                Ok _             -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
                 Err error        -> ((handleError model error), Cmd.none)
     GotSignupResponse result ->
             case result of
                 Ok "LoggedOut" -> ({ model | error = "Failed to register. Use a different username." }, Cmd.none)
-                Ok _           -> ({ model | currentPage = HomePage, error = "" }, Cmd.none)
+                Ok _           -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
+                Err error      -> (( handleError model error), Cmd.none)
+    GotLogoutResponse result ->
+            case result of
+                Ok "LoggedOut" -> ({ model | currentPage = LoginPage, error = "", username = "", password = "", isLoggedIn = False }, Cmd.none)
+                Ok _           -> ({model | currentPage = LoginPage}, Cmd.none)
                 Err error      -> (( handleError model error), Cmd.none)
     PressLogin  -> (model, loginPost model)
     PressSignup -> (model, signupPost model)
+    PressLogout -> (model, logoutPost model)
 
 handleError : Model -> Http.Error -> Model
 handleError model error =
@@ -108,20 +118,9 @@ handleError model error =
         Http.BadStatus i  -> { model | error = "Bad Status: " ++ String.fromInt i }
         Http.BadBody body -> { model | error = "Bad Body: " ++ body }
 
-view : Model -> Html Msg
-view model =
-  div []
-    [ bootstrapCSS
-    , faCSS
-    , formCSS
-    , navBar        
-    , pageToHTML model.currentPage
-    , text model.error
-    ]
-
-pageToHTML : Page -> Html Msg
-pageToHTML page = case page of
-    HomePage   -> div[][]
+pageToHTML : Model -> Html Msg
+pageToHTML model = case model.currentPage of
+    HomePage   -> homePage model.isLoggedIn
     LoginPage  -> loginForm
     SignupPage -> signUpForm
 
@@ -138,7 +137,15 @@ signupPost model =
     Http.post
         { url = rootUrl ++ "userauth/signup/"
         , body = Http.jsonBody <| userEncoder model
-        , expect = Http.expectString GotLoginResponse
+        , expect = Http.expectString GotSignupResponse
+        }
+
+logoutPost : Model -> Cmd Msg
+logoutPost model =
+    Http.post
+        { url = rootUrl ++ "userauth/logout/"
+        , body = Http.jsonBody <| userEncoder model
+        , expect = Http.expectString GotLogoutResponse
         }
 
 userEncoder : Model -> JEncode.Value
@@ -152,7 +159,19 @@ userEncoder model =
           )
         ]
 
-navBar = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
+view : Model -> Html Msg
+view model =
+  div []
+    [ bootstrapCSS
+    , faCSS
+    , formCSS
+    , navbar model    
+    , pageToHTML model
+    , text model.error
+    ]
+
+navbar : Model -> Html Msg
+navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       [ a [ class "navbar-brand ml-3" ]
         [ text "Reddit" ]
       , button [ attribute "aria-controls" "navbarToggler", attribute "aria-expanded" "false", attribute "aria-label" "Toggle navigation", class "navbar-toggler", attribute "data-target" "#navbarToggler", attribute "data-toggle" "collapse", type_ "button" ]
@@ -181,10 +200,20 @@ navBar = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
               ]
             ]
           ]
-          , button [ class "btn btn-outline-primary btn-header ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
-          , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]
+          , navBarButtons model
         ]
       ]
+
+navBarButtons : Model -> Html Msg
+navBarButtons model = if model.isLoggedIn then div[][
+                                  text ("Hello, " ++ model.username)
+                                , button [ class "btn btn-primary ml-3", onClick PressLogout] [ text "LOG OUT" ]]
+                           else div[][
+                                  button [ class "btn btn-outline-primary ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
+                                , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]]
+
+homePage : Bool -> Html Msg
+homePage isLoggedIn = if isLoggedIn then div[][text "Logged in!"] else div[][]
 
 loginForm = div [ class "container" ]
   [ div [ class "row" ]
