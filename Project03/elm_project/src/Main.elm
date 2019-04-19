@@ -1,10 +1,18 @@
 import Browser
 import Html exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Html.Attributes exposing (attribute, class, href, placeholder, type_, id, for)
+import Http
+import Json.Decode as JDecode
+import Json.Encode as JEncode
 
 main =
-  Browser.sandbox { init = init, update = update, view = view }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = \_ -> Sub.none
+        , view = view
+        }
 
 bootstrapCSS = 
   let
@@ -42,31 +50,63 @@ formCSS =
   in
     node tag attrs children
 
+rootUrl : String 
+rootUrl = "http://127.0.0.1:80/"
+
 type alias Model = { currentPage : Page
-                   , task : String
+                   , username : String
+                   , password : String
+                   , error : String
                    }
 
 type Msg = ChangePage Page
+         | ChangeUsername String
+         | ChangePassword String
+         | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
+         | GotSignupResponse (Result Http.Error String)
+         | PressLogin
+         | PressSignup
 
 type Page = HomePage
           | LoginPage
           | SignupPage
 
-init : Model
-init  = { currentPage = HomePage
-        , task = ""
-        }
-
-pageToHTML : Page -> Html Msg
-pageToHTML page = case page of
-    HomePage   -> div[][]
-    LoginPage  -> loginForm
-    SignupPage -> signUpForm
+init : () -> (Model, Cmd Msg)
+init _ = ({ currentPage = HomePage
+          , username = ""
+          , password = ""
+          , error = ""
+          }
+        , Cmd.none
+        )
         
-update : Msg -> Model -> Model
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of  
-    ChangePage page -> { model | currentPage = page}
+    ChangePage page      -> ({ model | currentPage = page }, Cmd.none)
+    ChangeUsername uname -> ({ model | username = uname }, Cmd.none)
+    ChangePassword pword -> ({ model | password = pword }, Cmd.none)
+    GotLoginResponse result ->
+            case result of
+                Ok "LoginFailed" -> ({ model | error = "Failed to login." }, Cmd.none)
+                Ok _             -> ({ model | currentPage = HomePage, error = "" }, Cmd.none)
+                Err error        -> ((handleError model error), Cmd.none)
+    GotSignupResponse result ->
+            case result of
+                Ok "LoggedOut" -> ({ model | error = "Failed to register. Use a different username." }, Cmd.none)
+                Ok _           -> ({ model | currentPage = HomePage, error = "" }, Cmd.none)
+                Err error      -> (( handleError model error), Cmd.none)
+    PressLogin  -> (model, loginPost model)
+    PressSignup -> (model, signupPost model)
+
+handleError : Model -> Http.Error -> Model
+handleError model error =
+    case error of
+        Http.BadUrl url   -> { model | error = "Bad URL: " ++ url }
+        Http.Timeout      -> { model | error = "Server Timout" }
+        Http.NetworkError -> { model | error = "Network Error" }
+        Http.BadStatus i  -> { model | error = "Bad Status: " ++ String.fromInt i }
+        Http.BadBody body -> { model | error = "Bad Body: " ++ body }
 
 view : Model -> Html Msg
 view model =
@@ -76,7 +116,41 @@ view model =
     , formCSS
     , navBar        
     , pageToHTML model.currentPage
+    , text model.error
     ]
+
+pageToHTML : Page -> Html Msg
+pageToHTML page = case page of
+    HomePage   -> div[][]
+    LoginPage  -> loginForm
+    SignupPage -> signUpForm
+
+loginPost : Model -> Cmd Msg
+loginPost model =
+    Http.post
+        { url = rootUrl ++ "userauth/login/"
+        , body = Http.jsonBody <| userEncoder model
+        , expect = Http.expectString GotLoginResponse
+        }
+
+signupPost : Model -> Cmd Msg
+signupPost model =
+    Http.post
+        { url = rootUrl ++ "userauth/signup/"
+        , body = Http.jsonBody <| userEncoder model
+        , expect = Http.expectString GotLoginResponse
+        }
+
+userEncoder : Model -> JEncode.Value
+userEncoder model =
+    JEncode.object
+        [ ( "username"
+          , JEncode.string model.username
+          )
+        , ( "password"
+          , JEncode.string model.password
+          )
+        ]
 
 navBar = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       [ a [ class "navbar-brand ml-3" ]
@@ -121,19 +195,19 @@ loginForm = div [ class "container" ]
             [ text "Log In" ]
           , form [ class "form-signin" ]
             [ div [ class "form-label-group" ]
-              [ input [ attribute "autofocus" "", class "form-control", id "inputEmail", placeholder "Email", attribute "required" "", type_ "email" ]
+              [ input [ attribute "autofocus" "", class "form-control", id "inputUsername", placeholder "Username", attribute "required" "", type_ "text", onInput ChangeUsername ]
                 []
-              , label [ for "inputEmail" ]
-                [i [ class "fas fa-envelope mr-2" ] [], text "Email" ]
+              , label [ for "inputUsername"]
+                [i [ class "fas fa-user mr-2" ] [], text "Username" ]
               ]
             , div [ class "form-label-group" ]
-              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password" ]
+              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password", onInput ChangePassword ]
                 []
               , label [ for "inputPassword" ]
                 [i [ class "fas fa-key mr-2" ] [], text "Password" ]
               ]
-            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit" ]
-              [ text "Log in" ]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressLogin ]
+              [ text "Log In" ]
             ]
           ]
         ]
@@ -150,18 +224,18 @@ signUpForm = div [ class "container" ]
             [ text "Sign Up" ]
           , form [ class "form-signin" ]
             [ div [ class "form-label-group" ]
-              [ input [ attribute "autofocus" "", class "form-control", id "inputEmail", placeholder "Email", attribute "required" "", type_ "email" ]
+              [ input [ attribute "autofocus" "", class "form-control", id "inputUsername", placeholder "Username", attribute "required" "", type_ "text", onInput ChangeUsername ]
                 []
-              , label [ for "inputEmail"]
-                [i [ class "fas fa-envelope mr-2" ] [], text "Email" ]
+              , label [ for "inputUsername"]
+                [i [ class "fas fa-user mr-2" ] [], text "Username" ]
               ]
             , div [ class "form-label-group" ]
-              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password" ]
+              [ input [ class "form-control", id "inputPassword", placeholder "Password", attribute "required" "", type_ "password", onInput ChangePassword ]
                 []
               , label [ for "inputPassword" ]
                 [i [ class "fas fa-key mr-2" ] [], text "Password" ]
               ]
-            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit" ]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressSignup ]
               [ text "Sign Up" ]
             ]
           ]
