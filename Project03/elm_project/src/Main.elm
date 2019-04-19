@@ -83,7 +83,7 @@ init _ = ({ currentPage = HomePage
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of  
-    ChangePage page      -> ({ model | currentPage = page }, Cmd.none)
+    ChangePage page      -> ({ model | currentPage = page, error = "" }, Cmd.none)
     ChangeUsername uname -> ({ model | username = uname }, Cmd.none)
     ChangePassword pword -> ({ model | password = pword }, Cmd.none)
     GotLoginResponse result ->
