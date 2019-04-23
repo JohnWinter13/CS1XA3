@@ -121,8 +121,8 @@ handleError model error =
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
     HomePage   -> homePage model.isLoggedIn
-    LoginPage  -> loginForm
-    SignupPage -> signUpForm
+    LoginPage  -> loginForm model.error
+    SignupPage -> signUpForm model.error
 
 loginPost : Model -> Cmd Msg
 loginPost model =
@@ -167,7 +167,6 @@ view model =
     , formCSS
     , navbar model    
     , pageToHTML model
-    , text model.error
     ]
 
 navbar : Model -> Html Msg
@@ -215,7 +214,8 @@ navBarButtons model = if model.isLoggedIn then div[][
 homePage : Bool -> Html Msg
 homePage isLoggedIn = if isLoggedIn then div[][text "Logged in!"] else div[][]
 
-loginForm = div [ class "container" ]
+loginForm : String -> Html Msg
+loginForm error = div [ class "container" ]
   [ div [ class "row" ]
     [ div [ class "col-sm-9 col-md-7 col-lg-5 mx-auto" ]
       [ div [ class "card card-signin my-5" ]
@@ -235,6 +235,7 @@ loginForm = div [ class "container" ]
               , label [ for "inputPassword" ]
                 [i [ class "fas fa-key mr-2" ] [], text "Password" ]
               ]
+            , h6 [ class "error-msg" ] [text error]
             , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressLogin ]
               [ text "Log In" ]
             ]
@@ -244,7 +245,8 @@ loginForm = div [ class "container" ]
     ]
   ]
 
-signUpForm = div [ class "container" ]
+signUpForm : String -> Html Msg
+signUpForm error = div [ class "container" ]
   [ div [ class "row" ]
     [ div [ class "col-sm-9 col-md-7 col-lg-5 mx-auto" ]
       [ div [ class "card card-signin my-5" ]
@@ -264,6 +266,7 @@ signUpForm = div [ class "container" ]
               , label [ for "inputPassword" ]
                 [i [ class "fas fa-key mr-2" ] [], text "Password" ]
               ]
+            , h6 [ class "error-msg" ] [text error]
             , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressSignup ]
               [ text "Sign Up" ]
             ]

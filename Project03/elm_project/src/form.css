@@ -24,6 +24,11 @@
     padding: 2rem;
   }
   
+  .error-msg {
+    color: rgb(218, 14, 14);
+    text-align: center;
+  }
+
   .form-signin {
     width: 100%;
   }
