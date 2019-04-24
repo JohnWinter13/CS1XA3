@@ -212,7 +212,7 @@ navBarButtons model = if model.isLoggedIn then div[][
                                 , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]]
 
 homePage : Bool -> Html Msg
-homePage isLoggedIn = if isLoggedIn then div[][text "Logged in!"] else div[][]
+homePage isLoggedIn = if isLoggedIn then div[][text "Logged in!", thread] else div[][thread]
 
 loginForm : String -> Html Msg
 loginForm error = div [ class "container" ]
@@ -272,6 +272,23 @@ signUpForm error = div [ class "container" ]
             ]
           ]
         ]
+      ]
+    ]
+  ]
+
+thread : Html Msg
+thread = div [ class "container"]
+  [ div [ class "card my-5"]
+    [
+      div [class "card-header"] [text "Posted by u/johnwinter 11 hours ago"]
+    , div [ class "thread-body" ] 
+      [
+        h4 [] [text "This is the title of my thread"]
+      , div [] 
+        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text "4k comments"]
+        , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
+        , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
+        ]    
       ]
     ]
   ]

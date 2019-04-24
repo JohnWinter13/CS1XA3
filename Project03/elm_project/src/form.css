@@ -29,6 +29,14 @@ body {
   text-align: center;
 }
 
+.thread-body {
+  padding: 10px 1.2rem;
+}
+
+.thread-button {
+  color: gray;
+}
+
 .form-signin {
   width: 100%;
 }
