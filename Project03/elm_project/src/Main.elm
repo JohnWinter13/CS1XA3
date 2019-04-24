@@ -97,9 +97,9 @@ update msg model =
                 Err error        -> ((handleError model error), Cmd.none)
     GotSignupResponse result ->
             case result of
-                Ok "LoggedOut" -> ({ model | error = "Failed to register. Use a different username." }, Cmd.none)
-                Ok _           -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
-                Err error      -> (( handleError model error), Cmd.none)
+                Ok "EmptyUsername" -> ({ model | error = "Spaces in usernames are not allowed." }, Cmd.none)
+                Ok _               -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
+                Err error          -> ({ model | error = "Failed to register. Try using a different username." }, Cmd.none)
     GotLogoutResponse result ->
             case result of
                 Ok "LoggedOut" -> ({ model | currentPage = LoginPage, error = "", username = "", password = "", isLoggedIn = False }, Cmd.none)

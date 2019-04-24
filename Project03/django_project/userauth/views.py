@@ -12,12 +12,12 @@ def add_user(request):
     uname = json_req.get('username','')
     passw = json_req.get('password','')
 
-    if uname != '':
+    if uname.strip() != "" and " " not in uname:
         user = User.objects.create_user(username=uname, password=passw)
         login(request, user)
         return HttpResponse('LoggedIn')
 
-    return HttpResponse('LoggedOut')
+    return HttpResponse('EmptyUsername')
 
 def login_user(request):
     """recieves a json request { 'username' : 'val0' : 'password' : 'val1' } and
