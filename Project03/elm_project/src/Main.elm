@@ -56,6 +56,8 @@ rootUrl = "http://127.0.0.1:80/"
 type alias Model = { currentPage : Page
                    , username : String
                    , password : String
+                   , newPostTitle : String
+                   , newPostContent : String
                    , error : String
                    , isLoggedIn : Bool
                    , threads : List Thread
@@ -64,30 +66,36 @@ type alias Model = { currentPage : Page
 type Msg = ChangePage Page
          | ChangeUsername String
          | ChangePassword String
+         | ChangeNewPostTitle String
+         | ChangeNewPostContent String
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
+         | GotNewThreadResponse (Result Http.Error String)
          | GotThreadsJSON (Result Http.Error (List Thread))
          | PressLogin
          | PressSignup
          | PressLogout
+         | PressNewPost
 
 type Page = HomePage
           | LoginPage
           | SignupPage
+          | NewPostPage
 
 type alias Thread = { title: String
                     , date: String
                     , content: String
                     , username: String
                     , isMaster: Bool
-
                     }
 
 init : () -> (Model, Cmd Msg)
 init _ = ({ currentPage = HomePage
           , username = ""
           , password = ""
+          , newPostTitle = ""
+          , newPostContent = ""
           , error = ""
           , isLoggedIn = False
           , threads = []
@@ -98,9 +106,12 @@ init _ = ({ currentPage = HomePage
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of  
-    ChangePage page      -> ({ model | currentPage = page, error = "" }, Cmd.none)
-    ChangeUsername uname -> ({ model | username = uname }, Cmd.none)
-    ChangePassword pword -> ({ model | password = pword }, Cmd.none)
+    ChangePage page              -> ({ model | currentPage = page, error = "" }, Cmd.none)
+    ChangeUsername uname         -> ({ model | username = uname }, Cmd.none)
+    ChangePassword pword         -> ({ model | password = pword }, Cmd.none)
+    ChangeNewPostTitle title     -> ({ model | newPostTitle = title }, Cmd.none)
+    ChangeNewPostContent content -> ({ model | newPostContent = content }, Cmd.none)
+
     GotLoginResponse result ->
             case result of
                 Ok "LoginFailed" -> ({ model | error = "Failed to login." }, Cmd.none)
@@ -119,11 +130,18 @@ update msg model =
     GotThreadsJSON result ->
             case result of
                 Ok newThreads  -> ({model | threads = newThreads}, Cmd.none)
-                Err error -> (( handleError model error), Cmd.none)
+                Err error      -> (( handleError model error), Cmd.none)
+    GotNewThreadResponse result ->
+            case result of
+                Ok "Success" -> ({model | currentPage = HomePage}, threadsGet)
+                Ok _         -> ({model | error = "Failed to make new post"}, Cmd.none)    
+                Err error    -> (( handleError model error), Cmd.none)
                     
-    PressLogin  -> (model, loginPost model)
-    PressSignup -> (model, signupPost model)
-    PressLogout -> (model, logoutPost model)
+
+    PressLogin   -> (model, loginPost model)
+    PressSignup  -> (model, signupPost model)
+    PressLogout  -> (model, logoutPost model)
+    PressNewPost -> (model, newThreadPost model)
 
 handleError : Model -> Http.Error -> Model
 handleError model error =
@@ -136,10 +154,11 @@ handleError model error =
 
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
-    HomePage   -> homePage model.isLoggedIn model.threads
-    LoginPage  -> loginForm model.error
-    SignupPage -> signUpForm model.error
-
+    HomePage    -> homePage model.isLoggedIn model.threads
+    LoginPage   -> loginForm model.error
+    SignupPage  -> signUpForm model.error
+    NewPostPage -> newPostForm model.error
+    
 loginPost : Model -> Cmd Msg
 loginPost model =
     Http.post
@@ -164,6 +183,14 @@ logoutPost model =
         , expect = Http.expectString GotLogoutResponse
         }
 
+newThreadPost : Model -> Cmd Msg
+newThreadPost model =
+    Http.post
+        { url = rootUrl ++ "threads/addthread/"
+        , body = Http.jsonBody <| newThreadEncoder model
+        , expect = Http.expectString GotNewThreadResponse
+        }
+
 threadsGet : Cmd Msg
 threadsGet =
     Http.get 
@@ -171,6 +198,23 @@ threadsGet =
           url = rootUrl ++ "threads/getthreads/"
         , expect = Http.expectJson GotThreadsJSON threadsDecoder 
         }
+
+newThreadEncoder : Model -> JEncode.Value
+newThreadEncoder model =
+    JEncode.object
+        [ ( "title"
+          , JEncode.string model.newPostTitle
+          )
+        , ( "is_master"
+          , JEncode.bool True
+          )
+        , ( "content"
+          , JEncode.string model.newPostContent
+          )
+        , ( "user"
+          , JEncode.string model.username
+          )
+        ]
 
 userEncoder : Model -> JEncode.Value
 userEncoder model =
@@ -224,7 +268,7 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
             ]
           , li [ class "nav-item dropdown" ]
             [ a [ attribute "aria-expanded" "false", attribute "aria-haspopup" "true", class "nav-link dropdown-toggle", attribute "data-toggle" "dropdown", href "#", id "navbarDropdownMenuLink" ]
-              [ text "Subreddit" ]
+              [ i [ class "fab fa-reddit-alien mr-2" ] [], text "Subreddit" ]
             , div [ attribute "aria-labelledby" "navbarDropdownMenuLink", class "dropdown-menu" ]
               [ a [ class "dropdown-item", href "#" ]
                 [ text "Action" ]
@@ -234,13 +278,21 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
                 [ text "Something else here" ]
               ]
             ]
+          , if model.isLoggedIn then li [ class "nav-item" ]
+            [
+              a [ class "nav-link"
+                , href "#"
+                , onClick (ChangePage NewPostPage) 
+                ]
+              [ i [ class "fas fa-clone mr-2" ] [], text "New Post" ]
+            ] else div[][] 
           ]
-          , navBarButtons model
+          , navBarButtonsRight model
         ]
       ]
 
-navBarButtons : Model -> Html Msg
-navBarButtons model = if model.isLoggedIn then div[][
+navBarButtonsRight : Model -> Html Msg
+navBarButtonsRight model = if model.isLoggedIn then div[][
                                   text ("Hello, " ++ model.username)
                                 , button [ class "btn btn-primary ml-3", onClick PressLogout] [ text "LOG OUT" ]]
                            else div[][
@@ -266,6 +318,33 @@ threadView thread = div [ class "container"]
         , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
         , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
         ]    
+      ]
+    ]
+  ]
+
+newPostForm : String -> Html Msg
+newPostForm error = div [ class "container" ]
+  [ div [ class "row" ]
+    [ div [ class "col-sm-9 col-md-7 col-lg-9 mx-auto" ]
+      [ div [ class "card card-signin my-5" ]
+        [ div [ class "card-body" ]
+          [ h5 [ class "card-title text-center" ]
+            [ text "Create a new Post" ]
+          , form [ class "form-signin" ]
+            [ div [ class "form-label-group" ]
+              [ input [ attribute "autofocus" "", class "form-control", id "inputTitle", placeholder "Title", attribute "required" "", type_ "text", onInput ChangeNewPostTitle ]
+                []
+              , label [ for "inputTitle"]
+                [i [ class "fas fa-user mr-2" ] [], text "Title" ]
+              ]
+            , div [ class "form-label-group" ]
+              [ textarea [ for "inputContent", class "form-control", placeholder "Content", onInput ChangeNewPostContent ] [] ]
+            , h6 [ class "error-msg" ] [text error]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressNewPost ]
+              [ text "Make Post" ]
+            ]
+          ]
+        ]
       ]
     ]
   ]
