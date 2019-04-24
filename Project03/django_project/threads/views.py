@@ -20,7 +20,10 @@ def add_thread(request):
     parent    = thread.get("parent", None)
 
     if content != "" and user != "":
-        new_thread = Thread(title=title, is_master=is_master, date=date, content=content, user=user, parent=parent)
+        if parent is None:
+            new_thread = Thread(title=title, is_master=is_master, date=date, content=content, user=user, parent=parent)
+        else:
+            new_thread = Thread(title=title, is_master=is_master, date=date, content=content, user=user, parent=Thread.objects.get(pk=parent))
         new_thread.save() # Add thread to database
         return HttpResponse("Success")
 
