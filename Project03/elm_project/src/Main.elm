@@ -88,6 +88,8 @@ type alias Thread = { title: String
                     , content: String
                     , username: String
                     , isMaster: Bool
+                    , parentID: Maybe Int
+                    , id: Int
                     }
 
 init : () -> (Model, Cmd Msg)
@@ -158,6 +160,15 @@ pageToHTML model = case model.currentPage of
     LoginPage   -> loginForm model.error
     SignupPage  -> signUpForm model.error
     NewPostPage -> newPostForm model.error
+
+getReplies : Int -> List Thread -> List Thread
+getReplies targetID threads = List.filter (\thread -> (doesIDMatch thread.parentID targetID)) threads
+
+doesIDMatch : Maybe Int -> Int -> Bool
+doesIDMatch id targetID = case id of
+    Just i  -> i == targetID
+    Nothing -> False
+        
     
 loginPost : Model -> Cmd Msg
 loginPost model =
@@ -231,12 +242,14 @@ threadsDecoder : JDecode.Decoder (List Thread)
 threadsDecoder =  JDecode.at["threads"] (JDecode.list threadDecoder)
 
 threadDecoder : JDecode.Decoder Thread
-threadDecoder = JDecode.map5 Thread
+threadDecoder = JDecode.map7 Thread
         (JDecode.field "title" JDecode.string)
         (JDecode.field "date" JDecode.string)
         (JDecode.field "content" JDecode.string)
         (JDecode.field "user" JDecode.string)
         (JDecode.field "is_master" JDecode.bool)
+        (JDecode.maybe(JDecode.field "parent" JDecode.int))
+        (JDecode.field "pkid" JDecode.int)
 
 view : Model -> Html Msg
 view model =
@@ -303,10 +316,10 @@ homePage : Bool -> List Thread -> Html Msg
 homePage isLoggedIn threads = if isLoggedIn then div[][text "Logged in!", threadsView threads] else div[][threadsView threads]
 
 threadsView : List Thread -> Html Msg 
-threadsView threads = div [] (List.map threadView threads)
+threadsView threads = div [] (List.map (\thread -> threadView thread threads) threads)
 
-threadView : Thread -> Html Msg
-threadView thread = div [ class "container"]
+threadView : Thread -> List Thread -> Html Msg
+threadView thread threads = div [ class "container"]
   [ div [ class "card my-5"]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
@@ -314,7 +327,7 @@ threadView thread = div [ class "container"]
       [
         h4 [] [text thread.title]
       , div [] 
-        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text "4k comments"]
+        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text (String.fromInt (List.length(getReplies thread.id threads)) ++ " comments")]
         , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
         , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
         ]    
