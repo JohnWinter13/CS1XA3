@@ -58,6 +58,7 @@ type alias Model = { currentPage : Page
                    , password : String
                    , error : String
                    , isLoggedIn : Bool
+                   , threads : List Thread
                    }
 
 type Msg = ChangePage Page
@@ -66,6 +67,7 @@ type Msg = ChangePage Page
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
+         | GotThreadsJSON (Result Http.Error (List Thread))
          | PressLogin
          | PressSignup
          | PressLogout
@@ -74,14 +76,23 @@ type Page = HomePage
           | LoginPage
           | SignupPage
 
+type alias Thread = { title: String
+                    , date: String
+                    , content: String
+                    , username: String
+                    , isMaster: Bool
+
+                    }
+
 init : () -> (Model, Cmd Msg)
 init _ = ({ currentPage = HomePage
           , username = ""
           , password = ""
           , error = ""
           , isLoggedIn = False
+          , threads = []
           }
-        , Cmd.none
+        , threadsGet
         )
         
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -105,6 +116,11 @@ update msg model =
                 Ok "LoggedOut" -> ({ model | currentPage = LoginPage, error = "", username = "", password = "", isLoggedIn = False }, Cmd.none)
                 Ok _           -> ({model | currentPage = LoginPage}, Cmd.none)
                 Err error      -> (( handleError model error), Cmd.none)
+    GotThreadsJSON result ->
+            case result of
+                Ok newThreads  -> ({model | threads = newThreads}, Cmd.none)
+                Err error -> (( handleError model error), Cmd.none)
+                    
     PressLogin  -> (model, loginPost model)
     PressSignup -> (model, signupPost model)
     PressLogout -> (model, logoutPost model)
@@ -120,7 +136,7 @@ handleError model error =
 
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
-    HomePage   -> homePage model.isLoggedIn
+    HomePage   -> homePage model.isLoggedIn model.threads
     LoginPage  -> loginForm model.error
     SignupPage -> signUpForm model.error
 
@@ -148,6 +164,14 @@ logoutPost model =
         , expect = Http.expectString GotLogoutResponse
         }
 
+threadsGet : Cmd Msg
+threadsGet =
+    Http.get 
+        {
+          url = rootUrl ++ "threads/getthreads/"
+        , expect = Http.expectJson GotThreadsJSON threadsDecoder 
+        }
+
 userEncoder : Model -> JEncode.Value
 userEncoder model =
     JEncode.object
@@ -159,6 +183,17 @@ userEncoder model =
           )
         ]
 
+threadsDecoder : JDecode.Decoder (List Thread)
+threadsDecoder =  JDecode.at["threads"] (JDecode.list threadDecoder)
+
+threadDecoder : JDecode.Decoder Thread
+threadDecoder = JDecode.map5 Thread
+        (JDecode.field "title" JDecode.string)
+        (JDecode.field "date" JDecode.string)
+        (JDecode.field "content" JDecode.string)
+        (JDecode.field "user" JDecode.string)
+        (JDecode.field "is_master" JDecode.bool)
+
 view : Model -> Html Msg
 view model =
   div []
@@ -167,6 +202,7 @@ view model =
     , formCSS
     , navbar model    
     , pageToHTML model
+    , text model.error
     ]
 
 navbar : Model -> Html Msg
@@ -211,8 +247,28 @@ navBarButtons model = if model.isLoggedIn then div[][
                                   button [ class "btn btn-outline-primary ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
                                 , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]]
 
-homePage : Bool -> Html Msg
-homePage isLoggedIn = if isLoggedIn then div[][text "Logged in!", thread] else div[][thread]
+homePage : Bool -> List Thread -> Html Msg
+homePage isLoggedIn threads = if isLoggedIn then div[][text "Logged in!", threadsView threads] else div[][threadsView threads]
+
+threadsView : List Thread -> Html Msg 
+threadsView threads = div [] (List.map threadView threads)
+
+threadView : Thread -> Html Msg
+threadView thread = div [ class "container"]
+  [ div [ class "card my-5"]
+    [
+      div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
+    , div [ class "thread-body" ] 
+      [
+        h4 [] [text thread.title]
+      , div [] 
+        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text "4k comments"]
+        , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
+        , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
+        ]    
+      ]
+    ]
+  ]
 
 loginForm : String -> Html Msg
 loginForm error = div [ class "container" ]
@@ -272,23 +328,6 @@ signUpForm error = div [ class "container" ]
             ]
           ]
         ]
-      ]
-    ]
-  ]
-
-thread : Html Msg
-thread = div [ class "container"]
-  [ div [ class "card my-5"]
-    [
-      div [class "card-header"] [text "Posted by u/johnwinter 11 hours ago"]
-    , div [ class "thread-body" ] 
-      [
-        h4 [] [text "This is the title of my thread"]
-      , div [] 
-        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text "4k comments"]
-        , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
-        , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
-        ]    
       ]
     ]
   ]
