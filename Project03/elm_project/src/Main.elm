@@ -133,7 +133,7 @@ update msg model =
                 Err error      -> (( handleError model error), Cmd.none)
     GotNewThreadResponse result ->
             case result of
-                Ok "Success" -> ({model | currentPage = HomePage}, threadsGet)
+                Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet)
                 Ok _         -> ({model | error = "Failed to make new post"}, Cmd.none)    
                 Err error    -> (( handleError model error), Cmd.none)
                     
@@ -329,7 +329,7 @@ newPostForm error = div [ class "container" ]
       [ div [ class "card card-signin my-5" ]
         [ div [ class "card-body" ]
           [ h5 [ class "card-title text-center" ]
-            [ text "Create a new Post" ]
+            [ text "Create a New Post" ]
           , form [ class "form-signin" ]
             [ div [ class "form-label-group" ]
               [ input [ attribute "autofocus" "", class "form-control", id "inputTitle", placeholder "Title", attribute "required" "", type_ "text", onInput ChangeNewPostTitle ]
