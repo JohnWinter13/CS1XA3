@@ -20,5 +20,6 @@ root = '' # TODO change this when deploying to 1xa3 server
 
 urlpatterns = [
     path(root + 'admin/', admin.site.urls),
-    path(root + 'userauth/', include('userauth.urls')) ,
+    path(root + 'userauth/', include('userauth.urls')),
+    path(root + 'threads/', include('threads.urls')),
 ]
