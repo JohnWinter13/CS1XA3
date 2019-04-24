@@ -1,6 +1,6 @@
 import Browser
 import Html exposing (..)
-import Html.Events exposing (onClick, onInput, onFocus)
+import Html.Events exposing (onClick, onInput, onFocus, onMouseEnter)
 import Html.Attributes exposing (attribute, class, href, placeholder, type_, id, for, readonly)
 import Http
 import Json.Decode as JDecode
@@ -86,6 +86,7 @@ type Page = HomePage
           | SignupPage
           | NewPostPage
           | NewReplyPage
+          | ThreadPage
 
 type alias Thread = { title: String
                     , date: String
@@ -168,6 +169,7 @@ pageToHTML model = case model.currentPage of
     SignupPage   -> signUpForm model.error
     NewPostPage  -> newPostForm model.error
     NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
+    ThreadPage   -> threadPage model.currentThreadID model.threads
 
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
@@ -362,11 +364,41 @@ navBarButtonsRight model = if model.isLoggedIn then div[][
 homePage : Bool -> List Thread -> Html Msg
 homePage isLoggedIn threads = if isLoggedIn then div[][text "Logged in!", threadsView threads] else div[][threadsView threads]
 
+getThreadHTMLByID : Int -> List Thread -> Html Msg
+getThreadHTMLByID threadID threads = 
+      let maybeThread = getThread threadID threads
+        in case maybeThread of
+            Just thread -> threadView thread threads
+            Nothing     -> div[][]
+                
+
+
+threadPage : Int -> List Thread -> Html Msg
+threadPage threadID threads = div[] [(getThreadHTMLByID threadID threads), (repliesView (getReplies threadID threads))]
+
+repliesView : List Thread -> Html Msg 
+repliesView threads = div [] (List.map replyView threads)
+
+replyView : Thread -> Html Msg
+replyView thread = div [ class "container"]
+  [ div [ class "card my-5"]
+    [
+      div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
+    , div [ class "thread-body" ] 
+      [
+        h4 [] [text thread.content]
+      , div [] 
+        [ button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
+        ]    
+      ]
+    ]
+  ]
+
 threadsView : List Thread -> Html Msg 
 threadsView threads = div [] (List.map (\thread -> threadView thread threads) threads)
 
 threadView : Thread -> List Thread -> Html Msg
-threadView thread threads = div [ class "container"]
+threadView thread threads = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
   [ div [ class "card my-5"]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
@@ -374,9 +406,9 @@ threadView thread threads = div [ class "container"]
       [
         h4 [] [text thread.title]
       , div [] 
-        [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text (String.fromInt (List.length(getReplies thread.id threads)) ++ " comments")]
+        [ button [class "btn thread-button", onClick (ChangePage ThreadPage)] [i [ class "fas fa-comment mr-2" ] [], text (String.fromInt (List.length(getReplies thread.id threads)) ++ " comments")]
         , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
-        , button [class "btn thread-button", onClick (ChangePage NewReplyPage), onFocus (ChangeMainThread thread.id)] [i [ class "fas fa-share mr-2" ] [], text "Reply"]
+        , button [class "btn thread-button", onClick (ChangePage NewReplyPage)] [i [ class "fas fa-share mr-2" ] [], text "Reply"]
         ]    
       ]
     ]
