@@ -362,7 +362,7 @@ navBarButtonsRight model = if model.isLoggedIn then div[][
                                 , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]]
 
 homePage : Bool -> List Thread -> Html Msg
-homePage isLoggedIn threads = if isLoggedIn then div[][text "Logged in!", threadsView threads] else div[][threadsView threads]
+homePage isLoggedIn threads = threadsView (List.filter(\thread -> thread.isMaster) threads) threads
 
 getThreadHTMLByID : Int -> List Thread -> Html Msg
 getThreadHTMLByID threadID threads = 
@@ -371,8 +371,6 @@ getThreadHTMLByID threadID threads =
             Just thread -> threadView thread threads
             Nothing     -> div[][]
                 
-
-
 threadPage : Int -> List Thread -> Html Msg
 threadPage threadID threads = div[] [(getThreadHTMLByID threadID threads), (repliesView (getReplies threadID threads))]
 
@@ -394,8 +392,8 @@ replyView thread = div [ class "container"]
     ]
   ]
 
-threadsView : List Thread -> Html Msg 
-threadsView threads = div [] (List.map (\thread -> threadView thread threads) threads)
+threadsView : List Thread -> List Thread -> Html Msg 
+threadsView threadsToDisplay allThreads = div [] (List.map (\thread -> threadView thread allThreads) threadsToDisplay)
 
 threadView : Thread -> List Thread -> Html Msg
 threadView thread threads = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
