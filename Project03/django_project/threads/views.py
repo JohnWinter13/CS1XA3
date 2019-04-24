@@ -5,7 +5,10 @@ import json
 
 class JSONSerializer(Builtin_Serializer):
     def get_dump_object(self, obj):
-        return self._current
+        metadata = {
+            "pkid": obj._get_pk_val(),
+        }
+        return dict(metadata.items() | self._current.items())
 
 def add_thread(request):
     thread    = json.loads(request.body)
