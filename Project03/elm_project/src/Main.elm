@@ -1,7 +1,7 @@
 import Browser
 import Html exposing (..)
-import Html.Events exposing (onClick, onInput)
-import Html.Attributes exposing (attribute, class, href, placeholder, type_, id, for)
+import Html.Events exposing (onClick, onInput, onFocus)
+import Html.Attributes exposing (attribute, class, href, placeholder, type_, id, for, readonly)
 import Http
 import Json.Decode as JDecode
 import Json.Encode as JEncode
@@ -61,6 +61,7 @@ type alias Model = { currentPage : Page
                    , error : String
                    , isLoggedIn : Bool
                    , threads : List Thread
+                   , currentThreadID : Int
                    }
 
 type Msg = ChangePage Page
@@ -68,6 +69,7 @@ type Msg = ChangePage Page
          | ChangePassword String
          | ChangeNewPostTitle String
          | ChangeNewPostContent String
+         | ChangeMainThread Int
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
@@ -77,11 +79,13 @@ type Msg = ChangePage Page
          | PressSignup
          | PressLogout
          | PressNewPost
+         | PressNewReply
 
 type Page = HomePage
           | LoginPage
           | SignupPage
           | NewPostPage
+          | NewReplyPage
 
 type alias Thread = { title: String
                     , date: String
@@ -101,6 +105,7 @@ init _ = ({ currentPage = HomePage
           , error = ""
           , isLoggedIn = False
           , threads = []
+          , currentThreadID = 0
           }
         , threadsGet
         )
@@ -113,6 +118,7 @@ update msg model =
     ChangePassword pword         -> ({ model | password = pword }, Cmd.none)
     ChangeNewPostTitle title     -> ({ model | newPostTitle = title }, Cmd.none)
     ChangeNewPostContent content -> ({ model | newPostContent = content }, Cmd.none)
+    ChangeMainThread newThreadID -> ({model | currentThreadID = newThreadID}, Cmd.none)
 
     GotLoginResponse result ->
             case result of
@@ -140,10 +146,11 @@ update msg model =
                 Err error    -> (( handleError model error), Cmd.none)
                     
 
-    PressLogin   -> (model, loginPost model)
-    PressSignup  -> (model, signupPost model)
-    PressLogout  -> (model, logoutPost model)
-    PressNewPost -> (model, newThreadPost model)
+    PressLogin    -> (model, loginPost model)
+    PressSignup   -> (model, signupPost model)
+    PressLogout   -> (model, logoutPost model)
+    PressNewPost  -> (model, newThreadPost model)
+    PressNewReply -> (model, newReplyPost model)
 
 handleError : Model -> Http.Error -> Model
 handleError model error =
@@ -156,10 +163,21 @@ handleError model error =
 
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
-    HomePage    -> homePage model.isLoggedIn model.threads
-    LoginPage   -> loginForm model.error
-    SignupPage  -> signUpForm model.error
-    NewPostPage -> newPostForm model.error
+    HomePage     -> homePage model.isLoggedIn model.threads
+    LoginPage    -> loginForm model.error
+    SignupPage   -> signUpForm model.error
+    NewPostPage  -> newPostForm model.error
+    NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
+
+getThreadContent : Int -> List Thread -> String
+getThreadContent targetID threads = 
+        let maybeThread = getThread targetID threads 
+            in case maybeThread of
+                  Just thread -> thread.title ++ "\n" ++ thread.content
+                  Nothing     -> ""
+                                              
+getThread : Int -> List Thread -> Maybe Thread
+getThread targetID threads = List.head (List.filter (\thread -> thread.id == targetID) threads)
 
 getReplies : Int -> List Thread -> List Thread
 getReplies targetID threads = List.filter (\thread -> (doesIDMatch thread.parentID targetID)) threads
@@ -202,6 +220,14 @@ newThreadPost model =
         , expect = Http.expectString GotNewThreadResponse
         }
 
+newReplyPost : Model -> Cmd Msg
+newReplyPost model =
+    Http.post
+        { url = rootUrl ++ "threads/addthread/"
+        , body = Http.jsonBody <| newReplyEncoder model
+        , expect = Http.expectString GotNewThreadResponse
+        }
+
 threadsGet : Cmd Msg
 threadsGet =
     Http.get 
@@ -209,6 +235,27 @@ threadsGet =
           url = rootUrl ++ "threads/getthreads/"
         , expect = Http.expectJson GotThreadsJSON threadsDecoder 
         }
+
+newReplyEncoder : Model -> JEncode.Value
+newReplyEncoder model =
+    JEncode.object
+        [ ( "title"
+          , JEncode.string ""
+          )
+        , ( "is_master"
+          , JEncode.bool False
+          )
+        , ( "content"
+          , JEncode.string model.newPostContent
+          )
+        , ( "user"
+          , JEncode.string model.username
+          )
+        , (
+            "parent"
+          ,  JEncode.int model.currentThreadID
+          )
+        ]
 
 newThreadEncoder : Model -> JEncode.Value
 newThreadEncoder model =
@@ -329,8 +376,30 @@ threadView thread threads = div [ class "container"]
       , div [] 
         [ button [class "btn thread-button"] [i [ class "fas fa-comment mr-2" ] [], text (String.fromInt (List.length(getReplies thread.id threads)) ++ " comments")]
         , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
-        , button [class "btn thread-button"] [i [ class "fas fa-share mr-2" ] [], text "Share"]
+        , button [class "btn thread-button", onClick (ChangePage NewReplyPage), onFocus (ChangeMainThread thread.id)] [i [ class "fas fa-share mr-2" ] [], text "Reply"]
         ]    
+      ]
+    ]
+  ]
+
+newReplyForm : String -> String -> Html Msg
+newReplyForm error threadContent = div [ class "container" ]
+  [ div [ class "row" ]
+    [ div [ class "col-sm-9 col-md-7 col-lg-9 mx-auto" ]
+      [ div [ class "card card-signin my-5" ]
+        [ div [ class "card-body" ]
+          [ h5 [ class "card-title text-center" ]
+            [ text "Reply to Post" ]
+          , form [ class "form-signin" ]
+            [ div [ class "form-label-group" ]
+            [ textarea [ for "inputContent", class "form-control", readonly True] [text threadContent] ]
+            ,  textarea [ for "inputContent", class "form-control", placeholder "Content", onInput ChangeNewPostContent ] [] 
+            , h6 [ class "error-msg" ] [text error]
+            , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressNewReply ]
+              [ text "Make Reply" ]
+            ]
+          ]
+        ]
       ]
     ]
   ]
