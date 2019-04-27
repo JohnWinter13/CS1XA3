@@ -29,7 +29,7 @@ def add_thread(request):
                 content=content, 
                 user=user, 
                 parent=parent, 
-                sub=Thread.objects.get(pk=sub)
+                sub=Sub.objects.get(pk=sub)
             )
         else:
             new_thread = Thread(
@@ -39,7 +39,7 @@ def add_thread(request):
                 content=content, 
                 user=user, 
                 parent=Thread.objects.get(pk=parent), 
-                sub=Thread.objects.get(pk=sub)
+                sub=Sub.objects.get(pk=sub)
             )
         new_thread.save() # Add thread to database
         return HttpResponse("Success")
