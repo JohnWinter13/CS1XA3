@@ -392,7 +392,7 @@ replyView thread = div [ class "container"]
   ]
 
 threadsView : List Thread -> List Thread -> Html Msg 
-threadsView threadsToDisplay allThreads = div [] (List.map (\thread -> threadView thread allThreads False) threadsToDisplay)
+threadsView threadsToDisplay allThreads = div [] (List.reverse (List.map (\thread -> threadView thread allThreads False) threadsToDisplay))
 
 threadView : Thread -> List Thread -> Bool -> Html Msg
 threadView thread threads showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
