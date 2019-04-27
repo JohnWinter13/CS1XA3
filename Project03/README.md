@@ -48,3 +48,14 @@ First, clone the repo using `git clone https://github.com/JohnWinter13/CS1XA3.gi
 4. Usage of several HTML events and attributes.
 5. Usage of Bootstrap and FontAwesome for styling, with a little bit of custom CSS. (Some CSS was also borrowed from https://startbootstrap.com/snippets/login/).
 6. https://package.elm-lang.org/packages/EdutainmentLIVE/elm-dropdown/latest/ was used to aid with managing dropdown menu state.
+
+# Sample Usage
+
+First register an account: ![alt text](https://i.imgur.com/WOLCfwa.png "Sign Up Image")
+Afterwards, create a subreddit ![alt text](https://i.imgur.com/To6DP87.png "Subreddit Image")
+You can make posts (make sure you select a subreddit from the dropdown menu).
+![alt text](https://i.imgur.com/OaUxi9o.png "Post Image")
+You can also try registering a new account and replying to the post you made, by pressing the Reply button. Note that the Give Award button currently doesn't do anything, except look pretty.
+![alt text](https://i.imgur.com/5GX1tXm.png "Reply Image")
+The home page will let you see all the main posts in different subreddits, ordered by newest to oldest. ![alt text](https://i.imgur.com/Vti7D3H.png "Reply Image")
+You can filter which posts you wanna see by selecting a subreddit. ![alt text](https://i.imgur.com/dDMEQz5.png "Reply Image")
