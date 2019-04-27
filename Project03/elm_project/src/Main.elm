@@ -52,7 +52,7 @@ formCSS =
     node tag attrs children
 
 rootUrl : String 
-rootUrl = "http://127.0.0.1:80/"
+rootUrl = "https://mac1xa3.ca/e/rizkally/"
 
 type alias Model = { currentPage : Page
                    , username : String

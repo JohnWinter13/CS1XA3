@@ -16,7 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-root = '' # TODO change this when deploying to 1xa3 server
+root = 'e/rizkally'
 
 urlpatterns = [
     path(root + 'admin/', admin.site.urls),
