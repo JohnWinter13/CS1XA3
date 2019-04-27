@@ -20,7 +20,7 @@ def add_thread(request):
     parent    = thread.get("parent", None)
     sub       = thread.get("sub", None)
 
-    if content != "" and user != "" and sub is not None:
+    if content != "" and user != "" and sub is not None and sub > 0:
         if parent is None:
             new_thread = Thread(
                 title=title, 
