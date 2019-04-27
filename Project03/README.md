@@ -18,7 +18,7 @@ First, clone the repo using `git clone https://github.com/JohnWinter13/CS1XA3.gi
 
 4. Change directory into the django_project using `cd Project03/django_project/`
 
-5. Using your favorite text-editor, edit `django_project/urls.py` and change the value of the variable `root` to `e/macid`
+5. Using your favorite text-editor, edit `django_project/urls.py` and change the value of the variable `root` to `e/macid/`
 
 6. Run the server using `python manage.py runserver localhost:port` where port is your assigned student port.
 
