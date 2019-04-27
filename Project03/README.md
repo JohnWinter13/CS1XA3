@@ -24,7 +24,7 @@ First, clone the repo using `git clone https://github.com/JohnWinter13/CS1XA3.gi
 
 ## Client-side Setup
 
-1. Change directory to `elm_project/src`
+1. Change directory to `elm_project`
 2. Edit `Main.elm` so that the constant `rootUrl` equals to `https://mac1xa3.ca/e/macid/`
 3. Run `elm make src/Main.elm` to generate an HTML file of the client-cide code.
 4. Copy the HTML file into your `public_html` directory.
