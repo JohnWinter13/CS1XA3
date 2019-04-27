@@ -58,6 +58,8 @@ type alias Model = { currentPage : Page
                    , password : String
                    , newPostTitle : String
                    , newPostContent : String
+                   , newSubName : String
+                   , newSubDescription : String
                    , error : String
                    , isLoggedIn : Bool
                    , threads : List Thread
@@ -70,11 +72,14 @@ type Msg = ChangePage Page
          | ChangePassword String
          | ChangeNewPostTitle String
          | ChangeNewPostContent String
+         | ChangeNewSubName String
+         | ChangeNewSubDescription String
          | ChangeMainThread Int
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
          | GotNewThreadResponse (Result Http.Error String)
+         | GotNewSubResponse (Result Http.Error String)
          | GotThreadsJSON (Result Http.Error (List Thread))
          | GotSubsJSON (Result Http.Error (List Sub))
          | PressLogin
@@ -82,12 +87,14 @@ type Msg = ChangePage Page
          | PressLogout
          | PressNewPost
          | PressNewReply
+         | PressNewSub
 
 type Page = HomePage
           | LoginPage
           | SignupPage
           | NewPostPage
           | NewReplyPage
+          | NewSubPage
           | ThreadPage
           | SubsPage
 
@@ -112,6 +119,8 @@ init _ = ({ currentPage = HomePage
           , password = ""
           , newPostTitle = ""
           , newPostContent = ""
+          , newSubName = ""
+          , newSubDescription = ""
           , error = ""
           , isLoggedIn = False
           , threads = []
@@ -129,7 +138,9 @@ update msg model =
     ChangePassword pword         -> ({ model | password = pword }, Cmd.none)
     ChangeNewPostTitle title     -> ({ model | newPostTitle = title }, Cmd.none)
     ChangeNewPostContent content -> ({ model | newPostContent = content }, Cmd.none)
-    ChangeMainThread newThreadID -> ({model | currentThreadID = newThreadID}, Cmd.none)
+    ChangeNewSubName name        -> ({ model | newSubName = name}, Cmd.none)
+    ChangeNewSubDescription desc -> ({ model | newSubDescription = desc}, Cmd.none)
+    ChangeMainThread newThreadID -> ({ model | currentThreadID = newThreadID}, Cmd.none)
 
     GotLoginResponse result ->
             case result of
@@ -153,20 +164,24 @@ update msg model =
     GotSubsJSON result ->
             case result of
                 Ok newSubs -> ({model | subs = newSubs}, Cmd.none)
-                Err error  -> (( handleError model error), Cmd.none)
-                    
+                Err error  -> (( handleError model error), Cmd.none)            
     GotNewThreadResponse result ->
             case result of
                 Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet)
                 Ok _         -> ({model | error = "Failed to make new post"}, Cmd.none)    
                 Err error    -> (( handleError model error), Cmd.none)
-                    
+    GotNewSubResponse result ->
+            case result of
+                Ok "Success" -> ({model | currentPage = HomePage, newSubName = "", newSubDescription = ""}, subsGet)
+                Ok _         -> ({model | error = "Failed to create new subreddit"}, Cmd.none)
+                Err error    -> (( handleError model error), Cmd.none)                              
 
     PressLogin    -> (model, loginPost model)
     PressSignup   -> (model, signupPost model)
     PressLogout   -> (model, logoutPost model)
     PressNewPost  -> (model, newThreadPost model)
     PressNewReply -> (model, newReplyPost model)
+    PressNewSub   -> (model, newSubPost model)
 
 handleError : Model -> Http.Error -> Model
 handleError model error =
@@ -186,6 +201,7 @@ pageToHTML model = case model.currentPage of
     NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
     ThreadPage   -> threadPage model.currentThreadID model.threads model.subs
     SubsPage     -> subsPage model.subs
+    NewSubPage   -> newSubForm model.error
 
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
@@ -255,6 +271,14 @@ newReplyPost model =
         , expect = Http.expectString GotNewThreadResponse
         }
 
+newSubPost : Model -> Cmd Msg
+newSubPost model =
+    Http.post
+        { url = rootUrl ++ "threads/addsub/"
+        , body = Http.jsonBody <| newSubEncoder model
+        , expect = Http.expectString GotNewSubResponse
+        }
+
 threadsGet : Cmd Msg
 threadsGet =
     Http.get 
@@ -308,6 +332,18 @@ newThreadEncoder model =
           , JEncode.string model.username
           )
         ]
+
+newSubEncoder : Model -> JEncode.Value
+newSubEncoder model =
+    JEncode.object
+      [
+        ( "name"
+        , JEncode.string model.newSubName
+        )
+      , ( "description"
+        , JEncode.string model.newSubDescription
+        )
+      ]
 
 userEncoder : Model -> JEncode.Value
 userEncoder model =
@@ -364,26 +400,37 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       , div [ class "collapse navbar-collapse", id "navbarToggler" ]
         [ ul [ class "navbar-nav mr-auto mt-2 mt-lg-0" ]
           [ 
-            li [ class "nav-item" ]
-            [ a [ class "nav-link"
+            div[class "d-inline"][
+            li [ class "nav-item d-inline" ]
+            [ a [ class "nav-link d-inline"
                 , href "#"
                 , onClick (ChangePage HomePage) ]
               [ i [ class "fas fa-home mr-2" ] [], text "Home" ]
             ]
-          , li [ class "nav-item" ]
-            [ a [ class "nav-link"
+          , li [ class "nav-item d-inline" ]
+            [ a [ class "nav-link d-inline"
                 , href "#"
                 , onClick (ChangePage SubsPage) ]
               [ i [ class "fab fa-reddit-alien mr-2" ] [], text "Choose Subreddit" ]
-            ]
-          , if model.isLoggedIn then li [ class "nav-item" ]
-            [
-              a [ class "nav-link"
+            ]]
+          , if model.isLoggedIn then div[ class "d-inline"][
+              li [ class "nav-item d-inline" ]
+              [
+                a [ class "nav-link d-inline"
+                  , href "#"
+                  , onClick (ChangePage NewPostPage) 
+                  ]
+                [ i [ class "fas fa-clone mr-2" ] [], text "New Post" ]
+              ]
+            , li [ class "nav-item d-inline"]
+              [
+                 a [ class "nav-link d-inline"
                 , href "#"
-                , onClick (ChangePage NewPostPage) 
+                , onClick (ChangePage NewSubPage) 
                 ]
-              [ i [ class "fas fa-clone mr-2" ] [], text "New Post" ]
-            ] else div[][] 
+              [ i [ class "fas fa-plus-circle mr-2" ] [], text "New Subreddit" ]
+              ]]
+             else div[][] 
           ]
           , navBarButtonsRight model
         ]
@@ -457,6 +504,30 @@ subView sub = div[ class "container" ]
   [ button [class "btn btn-danger my-3"] 
     [i [ class "fab fa-reddit-alien mr-2" ] []
     , text sub.name
+    ]
+  ]
+
+newSubForm : String -> Html Msg
+newSubForm error = div [ class "container" ]
+  [ div [ class "row" ]
+    [ div [ class "col-sm-9 col-md-7 col-lg-9 mx-auto" ]
+      [ div [ class "card card-signin my-5" ]
+        [ div [ class "card-body" ]
+          [ h5 [ class "card-title text-center" ]
+            [ text "Create a Subreddit" ]
+          , form [ class "form-signin" ]
+            [ div [ class "form-label-group" ]
+              [ input [ id "inputName", class "form-control", placeholder "Name", onInput ChangeNewSubName ] []
+              , label [ for "inputName"] [i [ class "fas fa-blog mr-2" ] [], text "Name" ]
+              , textarea [ for "inputDescription", class "form-control my-3", placeholder "Description", onInput ChangeNewSubDescription ] []
+              , h6 [ class "error-msg" ] [text error]
+              , button [ class "btn btn-lg btn-primary btn-block text-uppercase", type_ "submit", onClick PressNewSub ]
+                [ text "Create Subreddit" ]
+              ]
+            ]
+          ]
+        ]
+      ]
     ]
   ]
 
