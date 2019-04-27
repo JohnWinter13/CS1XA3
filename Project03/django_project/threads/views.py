@@ -18,12 +18,29 @@ def add_thread(request):
     content   = thread.get("content", "")
     user      = thread.get("user", "")
     parent    = thread.get("parent", None)
+    sub       = thread.get("sub", None)
 
-    if content != "" and user != "":
+    if content != "" and user != "" and sub is not None:
         if parent is None:
-            new_thread = Thread(title=title, is_master=is_master, date=date, content=content, user=user, parent=parent)
+            new_thread = Thread(
+                title=title, 
+                is_master=is_master,
+                date=date,
+                content=content, 
+                user=user, 
+                parent=parent, 
+                sub=Thread.objects.get(pk=sub)
+            )
         else:
-            new_thread = Thread(title=title, is_master=is_master, date=date, content=content, user=user, parent=Thread.objects.get(pk=parent))
+            new_thread = Thread(
+                title=title, 
+                is_master=is_master, 
+                date=date, 
+                content=content, 
+                user=user, 
+                parent=Thread.objects.get(pk=parent), 
+                sub=Thread.objects.get(pk=sub)
+            )
         new_thread.save() # Add thread to database
         return HttpResponse("Success")
 
@@ -54,7 +71,7 @@ def add_sub(request):
         return HttpResponse('Success')
     return HttpResponse('Failure')
 
-def name_is_unique(name):
+def sub_name_is_unique(name):
     for sub in Sub.objects.all():
         if name.lower() == sub.name.lower():
             return False
