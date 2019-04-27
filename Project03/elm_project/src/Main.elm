@@ -180,7 +180,7 @@ update msg model =
     GotNewThreadResponse result ->
             case result of
                 Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet)
-                Ok _         -> ({model | error = "Failed to make new post"}, Cmd.none)    
+                Ok _         -> ({model | error = "Failed to make new post. Make sure to choose a subreddit!"}, Cmd.none)    
                 Err error    -> (( handleError model error), Cmd.none)
     GotNewSubResponse result ->
             case result of
