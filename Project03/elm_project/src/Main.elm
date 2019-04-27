@@ -5,6 +5,7 @@ import Html.Attributes exposing (attribute, class, href, placeholder, type_, id,
 import Http
 import Json.Decode as JDecode
 import Json.Encode as JEncode
+import Dropdown
 
 main =
     Browser.element
@@ -66,6 +67,8 @@ type alias Model = { currentPage : Page
                    , subs : List Sub
                    , currentThreadID : Int
                    , currentSubID : Int
+                   , replySubID : Int
+                   , dropdownState : Dropdown.State
                    }
 
 type Msg = ChangePage Page
@@ -90,6 +93,8 @@ type Msg = ChangePage Page
          | PressNewPost
          | PressNewReply
          | PressNewSub
+         | OnSelect (Maybe Sub)
+         | DropdownMsg (Dropdown.Msg Sub)
 
 type Page = HomePage
           | LoginPage
@@ -98,8 +103,6 @@ type Page = HomePage
           | NewReplyPage
           | NewSubPage
           | ThreadPage
-          | SubsPage
-          | SubPage
 
 type alias Thread = { title: String
                     , date: String
@@ -130,6 +133,8 @@ init _ = ({ currentPage = HomePage
           , subs = []
           , currentThreadID = 0
           , currentSubID = 0
+          , replySubID = 0
+          , dropdownState = Dropdown.newState "Sub"
           }
         , Cmd.batch [threadsGet, subsGet]
         )
@@ -145,7 +150,7 @@ update msg model =
     ChangeNewSubName name        -> ({ model | newSubName = name}, Cmd.none)
     ChangeNewSubDescription desc -> ({ model | newSubDescription = desc}, Cmd.none)
     ChangeMainThread newThreadID -> ({ model | currentThreadID = newThreadID}, Cmd.none)
-    ChangeSub newSubID           -> ({ model | currentSubID = newSubID}, Cmd.none)
+    ChangeSub newSubID           -> ({ model | replySubID = newSubID}, Cmd.none)
 
     GotLoginResponse result ->
             case result of
@@ -188,6 +193,41 @@ update msg model =
     PressNewReply -> (model, newReplyPost model)
     PressNewSub   -> (model, newSubPost model)
 
+    OnSelect maybeSub ->
+            let id = case maybeSub of
+                        Just sub -> sub.id    
+                        Nothing  -> 0                  
+            in
+                ( { model | currentSubID = id }, Cmd.none )
+
+    -- Route message to the Dropdown component.
+    -- The returned command is important.
+    DropdownMsg subMsg ->
+        let
+            ( updated, cmd ) =
+                Dropdown.update dropdownConfig subMsg model.dropdownState
+        in
+            ( { model | dropdownState = updated }, cmd )
+
+{-|
+Create the configuration for the Dropdown component
+`Dropdown.newConfig` takes two args:
+- The selection message e.g. `OnSelect`
+- A function that extract a label from an item e.g. `.label`
+-}
+
+dropdownConfig : Dropdown.Config Msg Sub
+dropdownConfig =
+    Dropdown.newConfig OnSelect .name
+        |> Dropdown.withItemClass "border-bottom border-silver p1 gray"
+        |> Dropdown.withMenuClass "border border-gray"
+        |> Dropdown.withMenuStyles [ ( "background", "white" ) ]
+        |> Dropdown.withPrompt "Select Subreddit"
+        |> Dropdown.withPromptClass "silver"
+        |> Dropdown.withSelectedClass "bold"
+        |> Dropdown.withSelectedStyles [ ( "color", "black" ) ]
+        |> Dropdown.withTriggerClass "col-12 border bg-white p1"
+
 handleError : Model -> Http.Error -> Model
 handleError model error =
     case error of
@@ -199,18 +239,16 @@ handleError model error =
 
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
-    HomePage     -> homePage model.isLoggedIn model.threads model.subs
+    HomePage     -> homePage model.isLoggedIn (getThreadsInSub model.currentSubID model.threads) model.subs
     LoginPage    -> loginForm model.error
     SignupPage   -> signUpForm model.error
     NewPostPage  -> newPostForm model.error
     NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
     ThreadPage   -> threadPage model.currentThreadID model.threads model.subs
-    SubsPage     -> subsPage model.subs
     NewSubPage   -> newSubForm model.error
-    SubPage      -> homePage model.isLoggedIn (getThreadsInSub model.currentSubID model.threads) model.subs
 
 getThreadsInSub : Int -> List Thread -> List Thread
-getThreadsInSub subID threads = List.filter(\thread -> thread.subID == subID) threads
+getThreadsInSub subID threads = if subID /= 0 then List.filter(\thread -> thread.subID == subID) threads else threads
 
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
@@ -325,7 +363,7 @@ newReplyEncoder model =
           )
         , (
             "sub"
-          , JEncode.int model.currentSubID
+          , JEncode.int model.replySubID
           )
         ]
 
@@ -343,6 +381,10 @@ newThreadEncoder model =
           )
         , ( "user"
           , JEncode.string model.username
+          )
+        , (
+            "sub"
+          , JEncode.int model.currentSubID
           )
         ]
 
@@ -399,6 +441,7 @@ view model =
     , faCSS
     , formCSS
     , navbar model    
+    , Html.map DropdownMsg (Dropdown.view dropdownConfig model.dropdownState model.subs (getSub model.currentSubID model.subs))
     , pageToHTML model
     ]
 
@@ -415,17 +458,12 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
           [ 
             div[class "d-inline"][
             li [ class "nav-item d-inline" ]
-            [ a [ class "nav-link d-inline"
-                , href "#"
-                , onClick (ChangePage HomePage) ]
-              [ i [ class "fas fa-home mr-2" ] [], text "Home" ]
+              [ a [ class "nav-link d-inline"
+                  , href "#"
+                  , onClick (ChangePage HomePage) ]
+                [ i [ class "fas fa-home mr-2" ] [], text "Home" ]
+              ]
             ]
-          , li [ class "nav-item d-inline" ]
-            [ a [ class "nav-link d-inline"
-                , href "#"
-                , onClick (ChangePage SubsPage) ]
-              [ i [ class "fab fa-reddit-alien mr-2" ] [], text "Choose Subreddit" ]
-            ]]
           , if model.isLoggedIn then div[ class "d-inline"][
               li [ class "nav-item d-inline" ]
               [
@@ -506,17 +544,6 @@ threadView thread threads subs showContent = div [ class "container", onMouseEnt
         , button [class "btn thread-button", onClick (ChangePage NewReplyPage)] [i [ class "fas fa-share mr-2" ] [], text "Reply"]
         ]    
       ]
-    ]
-  ]
-
-subsPage : List Sub -> Html Msg
-subsPage subs = div [] (List.map subView subs)
-
-subView : Sub -> Html Msg
-subView sub = div[ class "container", onMouseEnter (ChangeSub sub.id) ] 
-  [ button [class "btn btn-danger my-3", onClick (ChangePage SubPage)] 
-    [i [ class "fab fa-reddit-alien mr-2" ] []
-    , text sub.name
     ]
   ]
 
