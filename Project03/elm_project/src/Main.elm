@@ -61,6 +61,7 @@ type alias Model = { currentPage : Page
                    , error : String
                    , isLoggedIn : Bool
                    , threads : List Thread
+                   , subs : List Sub
                    , currentThreadID : Int
                    }
 
@@ -75,6 +76,7 @@ type Msg = ChangePage Page
          | GotLogoutResponse (Result Http.Error String)
          | GotNewThreadResponse (Result Http.Error String)
          | GotThreadsJSON (Result Http.Error (List Thread))
+         | GotSubsJSON (Result Http.Error (List Sub))
          | PressLogin
          | PressSignup
          | PressLogout
@@ -87,6 +89,7 @@ type Page = HomePage
           | NewPostPage
           | NewReplyPage
           | ThreadPage
+          | SubsPage
 
 type alias Thread = { title: String
                     , date: String
@@ -97,6 +100,10 @@ type alias Thread = { title: String
                     , id: Int
                     }
 
+type alias Sub = { name: String
+                 , description: String
+                 }
+
 init : () -> (Model, Cmd Msg)
 init _ = ({ currentPage = HomePage
           , username = ""
@@ -106,9 +113,10 @@ init _ = ({ currentPage = HomePage
           , error = ""
           , isLoggedIn = False
           , threads = []
+          , subs = []
           , currentThreadID = 0
           }
-        , threadsGet
+        , Cmd.batch [threadsGet, subsGet]
         )
         
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -140,6 +148,11 @@ update msg model =
             case result of
                 Ok newThreads  -> ({model | threads = newThreads}, Cmd.none)
                 Err error      -> (( handleError model error), Cmd.none)
+    GotSubsJSON result ->
+            case result of
+                Ok newSubs -> ({model | subs = newSubs}, Cmd.none)
+                Err error  -> (( handleError model error), Cmd.none)
+                    
     GotNewThreadResponse result ->
             case result of
                 Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet)
@@ -170,6 +183,7 @@ pageToHTML model = case model.currentPage of
     NewPostPage  -> newPostForm model.error
     NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
     ThreadPage   -> threadPage model.currentThreadID model.threads
+    SubsPage     -> subsPage model.subs
 
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
@@ -189,7 +203,6 @@ doesIDMatch id targetID = case id of
     Just i  -> i == targetID
     Nothing -> False
         
-    
 loginPost : Model -> Cmd Msg
 loginPost model =
     Http.post
@@ -236,6 +249,14 @@ threadsGet =
         {
           url = rootUrl ++ "threads/getthreads/"
         , expect = Http.expectJson GotThreadsJSON threadsDecoder 
+        }
+
+subsGet : Cmd Msg
+subsGet =
+    Http.get
+        {
+          url = rootUrl ++ "threads/getsubs/"
+        , expect = Http.expectJson GotSubsJSON subsDecoder
         }
 
 newReplyEncoder : Model -> JEncode.Value
@@ -300,6 +321,14 @@ threadDecoder = JDecode.map7 Thread
         (JDecode.maybe(JDecode.field "parent" JDecode.int))
         (JDecode.field "pkid" JDecode.int)
 
+subsDecoder : JDecode.Decoder (List Sub)
+subsDecoder = JDecode.at["subs"] (JDecode.list subDecoder)
+
+subDecoder : JDecode.Decoder Sub
+subDecoder = JDecode.map2 Sub
+        (JDecode.field "name" JDecode.string)
+        (JDecode.field "description" JDecode.string)
+
 view : Model -> Html Msg
 view model =
   div []
@@ -327,17 +356,11 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
                 , onClick (ChangePage HomePage) ]
               [ i [ class "fas fa-home mr-2" ] [], text "Home" ]
             ]
-          , li [ class "nav-item dropdown" ]
-            [ a [ attribute "aria-expanded" "false", attribute "aria-haspopup" "true", class "nav-link dropdown-toggle", attribute "data-toggle" "dropdown", href "#", id "navbarDropdownMenuLink" ]
-              [ i [ class "fab fa-reddit-alien mr-2" ] [], text "Subreddit" ]
-            , div [ attribute "aria-labelledby" "navbarDropdownMenuLink", class "dropdown-menu" ]
-              [ a [ class "dropdown-item", href "#" ]
-                [ text "Action" ]
-              , a [ class "dropdown-item", href "#" ]
-                [ text "Another action" ]
-              , a [ class "dropdown-item", href "#" ]
-                [ text "Something else here" ]
-              ]
+          , li [ class "nav-item" ]
+            [ a [ class "nav-link"
+                , href "#"
+                , onClick (ChangePage SubsPage) ]
+              [ i [ class "fab fa-reddit-alien mr-2" ] [], text "Choose Subreddit" ]
             ]
           , if model.isLoggedIn then li [ class "nav-item" ]
             [
@@ -409,6 +432,17 @@ threadView thread threads showContent = div [ class "container", onMouseEnter (C
         , button [class "btn thread-button", onClick (ChangePage NewReplyPage)] [i [ class "fas fa-share mr-2" ] [], text "Reply"]
         ]    
       ]
+    ]
+  ]
+
+subsPage : List Sub -> Html Msg
+subsPage subs = div [] (List.map subView subs)
+
+subView : Sub -> Html Msg
+subView sub = div[ class "container" ] 
+  [ button [class "btn btn-danger my-3"] 
+    [i [ class "fab fa-reddit-alien mr-2" ] []
+    , text sub.name
     ]
   ]
 
