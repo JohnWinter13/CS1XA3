@@ -98,10 +98,12 @@ type alias Thread = { title: String
                     , isMaster: Bool
                     , parentID: Maybe Int
                     , id: Int
+                    , subID: Int
                     }
 
 type alias Sub = { name: String
                  , description: String
+                 , id: Int
                  }
 
 init : () -> (Model, Cmd Msg)
@@ -177,12 +179,12 @@ handleError model error =
 
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
-    HomePage     -> homePage model.isLoggedIn model.threads
+    HomePage     -> homePage model.isLoggedIn model.threads model.subs
     LoginPage    -> loginForm model.error
     SignupPage   -> signUpForm model.error
     NewPostPage  -> newPostForm model.error
     NewReplyPage -> newReplyForm model.error (getThreadContent model.currentThreadID model.threads)
-    ThreadPage   -> threadPage model.currentThreadID model.threads
+    ThreadPage   -> threadPage model.currentThreadID model.threads model.subs
     SubsPage     -> subsPage model.subs
 
 getThreadContent : Int -> List Thread -> String
@@ -191,12 +193,22 @@ getThreadContent targetID threads =
             in case maybeThread of
                   Just thread -> thread.title ++ "\n" ++ thread.content
                   Nothing     -> ""
-                                              
+
+getSubName : Int -> List Sub -> String
+getSubName targetID subs =
+        let maybeSub = getSub targetID subs
+          in case maybeSub of
+              Just sub -> sub.name   
+              Nothing -> ""
+                  
 getThread : Int -> List Thread -> Maybe Thread
 getThread targetID threads = List.head (List.filter (\thread -> thread.id == targetID) threads)
 
 getReplies : Int -> List Thread -> List Thread
 getReplies targetID threads = List.filter (\thread -> (doesIDMatch thread.parentID targetID)) threads
+
+getSub : Int -> List Sub -> Maybe Sub
+getSub targetID subs = List.head (List.filter (\sub -> sub.id == targetID) subs)
 
 doesIDMatch : Maybe Int -> Int -> Bool
 doesIDMatch id targetID = case id of
@@ -312,7 +324,7 @@ threadsDecoder : JDecode.Decoder (List Thread)
 threadsDecoder =  JDecode.at["threads"] (JDecode.list threadDecoder)
 
 threadDecoder : JDecode.Decoder Thread
-threadDecoder = JDecode.map7 Thread
+threadDecoder = JDecode.map8 Thread
         (JDecode.field "title" JDecode.string)
         (JDecode.field "date" JDecode.string)
         (JDecode.field "content" JDecode.string)
@@ -320,14 +332,16 @@ threadDecoder = JDecode.map7 Thread
         (JDecode.field "is_master" JDecode.bool)
         (JDecode.maybe(JDecode.field "parent" JDecode.int))
         (JDecode.field "pkid" JDecode.int)
+        (JDecode.field "sub" JDecode.int)
 
 subsDecoder : JDecode.Decoder (List Sub)
 subsDecoder = JDecode.at["subs"] (JDecode.list subDecoder)
 
 subDecoder : JDecode.Decoder Sub
-subDecoder = JDecode.map2 Sub
+subDecoder = JDecode.map3 Sub
         (JDecode.field "name" JDecode.string)
         (JDecode.field "description" JDecode.string)
+        (JDecode.field "pkid" JDecode.int)
 
 view : Model -> Html Msg
 view model =
@@ -383,18 +397,18 @@ navBarButtonsRight model = if model.isLoggedIn then div[][
                                   button [ class "btn btn-outline-primary ml-3", onClick (ChangePage LoginPage)] [ text "LOG IN" ]
                                 , button [ class "btn btn-primary ml-3 mr-3", onClick (ChangePage SignupPage)] [ text "SIGN UP" ]]
 
-homePage : Bool -> List Thread -> Html Msg
-homePage isLoggedIn threads = threadsView (List.filter(\thread -> thread.isMaster) threads) threads
+homePage : Bool -> List Thread -> List Sub -> Html Msg
+homePage isLoggedIn threads subs = threadsView (List.filter(\thread -> thread.isMaster) threads) threads subs
 
-getThreadHTMLByID : Int -> List Thread -> Html Msg
-getThreadHTMLByID threadID threads = 
+getThreadHTMLByID : Int -> List Thread -> List Sub -> Html Msg
+getThreadHTMLByID threadID threads subs = 
       let maybeThread = getThread threadID threads
         in case maybeThread of
-            Just thread -> threadView thread threads True
+            Just thread -> threadView thread threads subs True
             Nothing     -> div[][]
                 
-threadPage : Int -> List Thread -> Html Msg
-threadPage threadID threads = div[] [(getThreadHTMLByID threadID threads), (repliesView (getReplies threadID threads))]
+threadPage : Int -> List Thread -> List Sub -> Html Msg
+threadPage threadID threads subs = div[] [(getThreadHTMLByID threadID threads subs), (repliesView (getReplies threadID threads))]
 
 repliesView : List Thread -> Html Msg 
 repliesView threads = div [] (List.map replyView threads)
@@ -414,14 +428,14 @@ replyView thread = div [ class "container"]
     ]
   ]
 
-threadsView : List Thread -> List Thread -> Html Msg 
-threadsView threadsToDisplay allThreads = div [] (List.reverse (List.map (\thread -> threadView thread allThreads False) threadsToDisplay))
+threadsView : List Thread -> List Thread -> List Sub -> Html Msg 
+threadsView threadsToDisplay allThreads subs = div [] (List.reverse (List.map (\thread -> threadView thread allThreads subs False) threadsToDisplay))
 
-threadView : Thread -> List Thread -> Bool -> Html Msg
-threadView thread threads showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
+threadView : Thread -> List Thread -> List Sub -> Bool -> Html Msg
+threadView thread threads subs showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
   [ div [ class "card my-5"]
     [
-      div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
+      div [class "card-header"] [text ("Posted by " ++ thread.username ++ " on " ++ thread.date ++ " in " ++ getSubName thread.subID subs)]
     , div [ class "thread-body" ] 
       [
         h4 [] [text thread.title]
