@@ -378,13 +378,13 @@ repliesView threads = div [] (List.map replyView threads)
 
 replyView : Thread -> Html Msg
 replyView thread = div [ class "container"]
-  [ div [ class "card my-5"]
+  [ div [ class "card my-3"]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
     , div [ class "thread-body" ] 
       [
-        h4 [] [text thread.content]
-      , div [] 
+        h6 [] [text thread.content]
+      , div [class "pr-6"] 
         [ button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
         ]    
       ]
