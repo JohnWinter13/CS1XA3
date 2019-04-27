@@ -99,6 +99,7 @@ type Page = HomePage
           | NewSubPage
           | ThreadPage
           | SubsPage
+          | SubPage
 
 type alias Thread = { title: String
                     , date: String
@@ -206,6 +207,10 @@ pageToHTML model = case model.currentPage of
     ThreadPage   -> threadPage model.currentThreadID model.threads model.subs
     SubsPage     -> subsPage model.subs
     NewSubPage   -> newSubForm model.error
+    SubPage      -> homePage model.isLoggedIn (getThreadsInSub model.currentSubID model.threads) model.subs
+
+getThreadsInSub : Int -> List Thread -> List Thread
+getThreadsInSub subID threads = List.filter(\thread -> thread.subID == subID) threads
 
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
@@ -508,8 +513,8 @@ subsPage : List Sub -> Html Msg
 subsPage subs = div [] (List.map subView subs)
 
 subView : Sub -> Html Msg
-subView sub = div[ class "container" ] 
-  [ button [class "btn btn-danger my-3"] 
+subView sub = div[ class "container", onMouseEnter (ChangeSub sub.id) ] 
+  [ button [class "btn btn-danger my-3", onClick (ChangePage SubPage)] 
     [i [ class "fab fa-reddit-alien mr-2" ] []
     , text sub.name
     ]
