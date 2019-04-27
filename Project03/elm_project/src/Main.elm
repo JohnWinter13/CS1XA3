@@ -367,7 +367,7 @@ getThreadHTMLByID : Int -> List Thread -> Html Msg
 getThreadHTMLByID threadID threads = 
       let maybeThread = getThread threadID threads
         in case maybeThread of
-            Just thread -> threadView thread threads
+            Just thread -> threadView thread threads True
             Nothing     -> div[][]
                 
 threadPage : Int -> List Thread -> Html Msg
@@ -392,16 +392,17 @@ replyView thread = div [ class "container"]
   ]
 
 threadsView : List Thread -> List Thread -> Html Msg 
-threadsView threadsToDisplay allThreads = div [] (List.map (\thread -> threadView thread allThreads) threadsToDisplay)
+threadsView threadsToDisplay allThreads = div [] (List.map (\thread -> threadView thread allThreads False) threadsToDisplay)
 
-threadView : Thread -> List Thread -> Html Msg
-threadView thread threads = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
+threadView : Thread -> List Thread -> Bool -> Html Msg
+threadView thread threads showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
   [ div [ class "card my-5"]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " at " ++ thread.date)]
     , div [ class "thread-body" ] 
       [
         h4 [] [text thread.title]
+      , if showContent then h6 [] [text thread.content] else div [] []
       , div [] 
         [ button [class "btn thread-button", onClick (ChangePage ThreadPage)] [i [ class "fas fa-comment mr-2" ] [], text (String.fromInt (List.length(getReplies thread.id threads)) ++ " comments")]
         , button [class "btn thread-button"] [i [ class "fas fa-star mr-2" ] [], text "Give Award"]
