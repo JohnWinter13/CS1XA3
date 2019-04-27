@@ -308,7 +308,6 @@ view model =
     , formCSS
     , navbar model    
     , pageToHTML model
-    , text model.error
     ]
 
 navbar : Model -> Html Msg
