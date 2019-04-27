@@ -65,6 +65,7 @@ type alias Model = { currentPage : Page
                    , threads : List Thread
                    , subs : List Sub
                    , currentThreadID : Int
+                   , currentSubID : Int
                    }
 
 type Msg = ChangePage Page
@@ -75,6 +76,7 @@ type Msg = ChangePage Page
          | ChangeNewSubName String
          | ChangeNewSubDescription String
          | ChangeMainThread Int
+         | ChangeSub Int
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
@@ -126,6 +128,7 @@ init _ = ({ currentPage = HomePage
           , threads = []
           , subs = []
           , currentThreadID = 0
+          , currentSubID = 0
           }
         , Cmd.batch [threadsGet, subsGet]
         )
@@ -141,6 +144,7 @@ update msg model =
     ChangeNewSubName name        -> ({ model | newSubName = name}, Cmd.none)
     ChangeNewSubDescription desc -> ({ model | newSubDescription = desc}, Cmd.none)
     ChangeMainThread newThreadID -> ({ model | currentThreadID = newThreadID}, Cmd.none)
+    ChangeSub newSubID           -> ({ model | currentSubID = newSubID}, Cmd.none)
 
     GotLoginResponse result ->
             case result of
@@ -314,6 +318,10 @@ newReplyEncoder model =
             "parent"
           ,  JEncode.int model.currentThreadID
           )
+        , (
+            "sub"
+          , JEncode.int model.currentSubID
+          )
         ]
 
 newThreadEncoder : Model -> JEncode.Value
@@ -480,7 +488,7 @@ threadsView threadsToDisplay allThreads subs = div [] (List.reverse (List.map (\
 
 threadView : Thread -> List Thread -> List Sub -> Bool -> Html Msg
 threadView thread threads subs showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
-  [ div [ class "card my-5"]
+  [ div [ class "card my-5", onMouseEnter (ChangeSub thread.subID) ]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " on " ++ thread.date ++ " in " ++ getSubName thread.subID subs)]
     , div [ class "thread-body" ] 
