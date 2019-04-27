@@ -61,13 +61,13 @@ type alias Model = { currentPage : Page
                    , newPostContent : String
                    , newSubName : String
                    , newSubDescription : String
-                   , error : String
+                   , error : String --Error message from Http responses
                    , isLoggedIn : Bool
                    , threads : List Thread
                    , subs : List Sub
                    , currentThreadID : Int
-                   , currentSubID : Int
-                   , replySubID : Int
+                   , currentSubID : Int --The subreddit the user is browsing (controlled by the dropdown menu)
+                   , replySubID : Int --The subreddit belonging to the post the user is replying to (not related to currentSubID)
                    , dropdownState : Dropdown.State
                    }
 
@@ -80,23 +80,24 @@ type Msg = ChangePage Page
          | ChangeNewSubDescription String
          | ChangeMainThread Int
          | ChangeReplySub Int
-         | ResetSub
+         | ResetSub --Activated when user clicks on home button
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
          | GotNewThreadResponse (Result Http.Error String)
          | GotNewSubResponse (Result Http.Error String)
-         | GotThreadsJSON (Result Http.Error (List Thread))
+         | GotThreadsJSON (Result Http.Error (List Thread)) --Http JSON recieved
          | GotSubsJSON (Result Http.Error (List Sub))
-         | PressLogin
+         | PressLogin --Activated when user presses login button
          | PressSignup
          | PressLogout
          | PressNewPost
          | PressNewReply
          | PressNewSub
-         | OnSelect (Maybe Sub)
-         | DropdownMsg (Dropdown.Msg Sub)
+         | OnSelect (Maybe Sub) --Activated when user selects an item on the dropdown
+         | DropdownMsg (Dropdown.Msg Sub) --Important for maintaining dropdown state (see below)
 
+--The different types of pages a user can view
 type Page = HomePage
           | LoginPage
           | SignupPage
@@ -105,6 +106,7 @@ type Page = HomePage
           | NewSubPage
           | ThreadPage
 
+--A record type containing information for a thread
 type alias Thread = { title: String
                     , date: String
                     , content: String
@@ -115,6 +117,7 @@ type alias Thread = { title: String
                     , subID: Int
                     }
 
+--A record type containing information for a sub
 type alias Sub = { name: String
                  , description: String
                  , id: Int
@@ -137,7 +140,7 @@ init _ = ({ currentPage = HomePage
           , replySubID = 0
           , dropdownState = Dropdown.newState "Sub"
           }
-        , Cmd.batch [threadsGet, subsGet]
+        , Cmd.batch [threadsGet, subsGet] --Retrieve all threads and subs from the server on startup
         )
         
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -151,18 +154,19 @@ update msg model =
     ChangeNewSubName name        -> ({ model | newSubName = name}, Cmd.none)
     ChangeNewSubDescription desc -> ({ model | newSubDescription = desc}, Cmd.none)
     ChangeMainThread newThreadID -> ({ model | currentThreadID = newThreadID}, Cmd.none)
-    ChangeReplySub newSubID      -> ({ model | replySubID = newSubID}, Cmd.none)
-    ResetSub                     -> ({ model | currentSubID = 0}, Cmd.none)
+    ChangeReplySub newSubID      -> ({ model | replySubID = newSubID}, Cmd.none) --The replySubID tracks the sub that belongs to the post that the user is replying to, and has no correlation to the sub in the dropdown
+    ResetSub                     -> ({ model | currentSubID = 0}, Cmd.none) --Event called when we click on the homepage button, set ID to 0 so that the user can see all the posts
 
+    --Http Response Updates
     GotLoginResponse result ->
             case result of
                 Ok "LoginFailed" -> ({ model | error = "Failed to login." }, Cmd.none)
-                Ok _             -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
+                Ok _             -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none) --Successfully logged in
                 Err error        -> ((handleError model error), Cmd.none)
     GotSignupResponse result ->
             case result of
                 Ok "EmptyUsername" -> ({ model | error = "Spaces in usernames are not allowed." }, Cmd.none)
-                Ok _               -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none)
+                Ok _               -> ({ model | currentPage = HomePage, error = "", isLoggedIn = True }, Cmd.none) --Successfully signed in
                 Err error          -> ({ model | error = "Failed to register. Try using a different username." }, Cmd.none)
     GotLogoutResponse result ->
             case result of
@@ -179,15 +183,16 @@ update msg model =
                 Err error  -> (( handleError model error), Cmd.none)            
     GotNewThreadResponse result ->
             case result of
-                Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet)
+                Ok "Success" -> ({model | currentPage = HomePage, newPostTitle = "", newPostContent = ""}, threadsGet) --We created a new thread, so must run threadsGet to retrieve and update new threads
                 Ok _         -> ({model | error = "Failed to make new post. Make sure to choose a subreddit!"}, Cmd.none)    
                 Err error    -> (( handleError model error), Cmd.none)
     GotNewSubResponse result ->
             case result of
-                Ok "Success" -> ({model | currentPage = HomePage, newSubName = "", newSubDescription = ""}, subsGet)
+                Ok "Success" -> ({model | currentPage = HomePage, newSubName = "", newSubDescription = ""}, subsGet) --We created a new sub, so must run subsGet to retrieve and update new subs
                 Ok _         -> ({model | error = "Failed to create new subreddit"}, Cmd.none)
                 Err error    -> (( handleError model error), Cmd.none)                              
 
+    --Press Button Events, all route to an Http Post request
     PressLogin    -> (model, loginPost model)
     PressSignup   -> (model, signupPost model)
     PressLogout   -> (model, logoutPost model)
@@ -195,6 +200,7 @@ update msg model =
     PressNewReply -> (model, newReplyPost model)
     PressNewSub   -> (model, newSubPost model)
 
+    --Update the selected sub id when user selects using dropdown
     OnSelect maybeSub ->
             let id = case maybeSub of
                         Just sub -> sub.id    
@@ -215,9 +221,8 @@ update msg model =
 Create the configuration for the Dropdown component
 `Dropdown.newConfig` takes two args:
 - The selection message e.g. `OnSelect`
-- A function that extract a label from an item e.g. `.label`
+- A function that extract a label from an item e.g. `.name`
 -}
-
 dropdownConfig : Dropdown.Config Msg Sub
 dropdownConfig =
     Dropdown.newConfig OnSelect .name
@@ -230,6 +235,7 @@ dropdownConfig =
         |> Dropdown.withSelectedStyles [ ( "color", "black" ) ]
         |> Dropdown.withTriggerClass "col-12 border bg-white p1"
 
+--A function to handle Http Errors
 handleError : Model -> Http.Error -> Model
 handleError model error =
     case error of
@@ -239,6 +245,7 @@ handleError model error =
         Http.BadStatus i  -> { model | error = "Bad Status: " ++ String.fromInt i }
         Http.BadBody body -> { model | error = "Bad Body: " ++ body }
 
+--Given a model, routes the model's currentPage to the appropriate HTML view
 pageToHTML : Model -> Html Msg
 pageToHTML model = case model.currentPage of
     HomePage     -> homePage model.isLoggedIn (getThreadsInSub model.currentSubID model.threads) model.subs
@@ -249,9 +256,14 @@ pageToHTML model = case model.currentPage of
     ThreadPage   -> threadPage model.currentThreadID model.threads model.subs
     NewSubPage   -> newSubForm model.error
 
+
+--Filters the list of threads given to those with the same subID as the given subID
+--If the subID given is 0, it will just return the list of all threads (0 means we are on the homepage)
 getThreadsInSub : Int -> List Thread -> List Thread
 getThreadsInSub subID threads = if subID /= 0 then List.filter(\thread -> thread.subID == subID) threads else threads
 
+--Returns a string containing the thread's title and content
+--If the targetID given does not match any of the threads, will return an empty string.
 getThreadContent : Int -> List Thread -> String
 getThreadContent targetID threads = 
         let maybeThread = getThread targetID threads 
@@ -259,27 +271,43 @@ getThreadContent targetID threads =
                   Just thread -> thread.title ++ "\n" ++ thread.content
                   Nothing     -> ""
 
+--Returns a string containing the sub's name
+--If the targetID given does not match any of the subs, will return an empty string.
 getSubName : Int -> List Sub -> String
 getSubName targetID subs =
         let maybeSub = getSub targetID subs
           in case maybeSub of
               Just sub -> sub.name   
               Nothing -> ""
-                  
+
+--Given a targetID and a list of threads, looks for the thread and returns it.
+--If there is more than one thread with the same ID, returns the first one (this should NEVER happen unless the database is corrupted).
+--Returns Nothing if there are no threads matching the targetID                  
 getThread : Int -> List Thread -> Maybe Thread
 getThread targetID threads = List.head (List.filter (\thread -> thread.id == targetID) threads)
 
+--Given a targetID and a list of threads, looks through the list of threads and
+--returns a list containing all posts with parentID matching targetID 
+--(i.e. the replies of the thread with id targetID)
 getReplies : Int -> List Thread -> List Thread
 getReplies targetID threads = List.filter (\thread -> (doesIDMatch thread.parentID targetID)) threads
 
+--Given a targetID and a list of subs, looks for the sub and returns it.
+--If there is more than one sub with the same ID, returns the first one (this should NEVER happen unless the database is corrupted).
+--Returns Nothing if there are no subs matching the targetID                 
 getSub : Int -> List Sub -> Maybe Sub
 getSub targetID subs = List.head (List.filter (\sub -> sub.id == targetID) subs)
 
+--A helper function to determine if a Maybe Int matches an Int
 doesIDMatch : Maybe Int -> Int -> Bool
 doesIDMatch id targetID = case id of
     Just i  -> i == targetID
     Nothing -> False
-        
+
+
+--HTTP POST REQUESTS
+
+
 loginPost : Model -> Cmd Msg
 loginPost model =
     Http.post
@@ -328,6 +356,10 @@ newSubPost model =
         , expect = Http.expectString GotNewSubResponse
         }
 
+
+--HTTP GET REQUESTS
+
+
 threadsGet : Cmd Msg
 threadsGet =
     Http.get 
@@ -343,6 +375,9 @@ subsGet =
           url = rootUrl ++ "threads/getsubs/"
         , expect = Http.expectJson GotSubsJSON subsDecoder
         }
+
+
+--JSON ENCODERS
 
 newReplyEncoder : Model -> JEncode.Value
 newReplyEncoder model =
@@ -413,6 +448,10 @@ userEncoder model =
           )
         ]
 
+
+--JSON DECODERS
+
+
 threadsDecoder : JDecode.Decoder (List Thread)
 threadsDecoder =  JDecode.at["threads"] (JDecode.list threadDecoder)
 
@@ -481,7 +520,7 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
                 , href "#"
                 , onClick (ChangePage NewSubPage) 
                 ]
-              [ i [ class "fas fa-plus-circle mr-2" ] [], text "New Subreddit" ]
+              [ i [ class "fab fa-reddit-alien mr-2" ] [], text "New Subreddit" ]
               ]]
              else div[][] 
           ]
