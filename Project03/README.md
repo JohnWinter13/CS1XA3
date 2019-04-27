@@ -27,7 +27,7 @@ First, clone the repo using `git clone https://github.com/JohnWinter13/CS1XA3.gi
 1. Change directory to `elm_project`
 2. Edit `Main.elm` so that the constant `rootUrl` equals to `https://mac1xa3.ca/e/macid/`
 3. Run `elm make src/Main.elm --output=project3.html` to generate an HTML file of the client-cide code.
-4. Copy the HTML file into your `public_html` directory.
+4. Copy the HTML file and `form.css` into your `public_html` directory.
 5. You will now be able to access the app at `https://mac1xa3.ca/u/macid/project3.html` 
 
 # Features
