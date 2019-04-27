@@ -79,7 +79,8 @@ type Msg = ChangePage Page
          | ChangeNewSubName String
          | ChangeNewSubDescription String
          | ChangeMainThread Int
-         | ChangeSub Int
+         | ChangeReplySub Int
+         | ResetSub
          | GotLoginResponse (Result Http.Error String) -- Http Post Response Received
          | GotSignupResponse (Result Http.Error String)
          | GotLogoutResponse (Result Http.Error String)
@@ -150,7 +151,8 @@ update msg model =
     ChangeNewSubName name        -> ({ model | newSubName = name}, Cmd.none)
     ChangeNewSubDescription desc -> ({ model | newSubDescription = desc}, Cmd.none)
     ChangeMainThread newThreadID -> ({ model | currentThreadID = newThreadID}, Cmd.none)
-    ChangeSub newSubID           -> ({ model | replySubID = newSubID}, Cmd.none)
+    ChangeReplySub newSubID      -> ({ model | replySubID = newSubID}, Cmd.none)
+    ResetSub                     -> ({ model | currentSubID = 0}, Cmd.none)
 
     GotLoginResponse result ->
             case result of
@@ -456,7 +458,7 @@ navbar model = nav [ class "navbar navbar-expand-lg navbar-light bg-light" ]
       , div [ class "collapse navbar-collapse", id "navbarToggler" ]
         [ ul [ class "navbar-nav mr-auto mt-2 mt-lg-0" ]
           [ 
-            div[class "d-inline"][
+            div[class "d-inline", onClick (ResetSub)][
             li [ class "nav-item d-inline" ]
               [ a [ class "nav-link d-inline"
                   , href "#"
@@ -531,7 +533,7 @@ threadsView threadsToDisplay allThreads subs = div [] (List.reverse (List.map (\
 
 threadView : Thread -> List Thread -> List Sub -> Bool -> Html Msg
 threadView thread threads subs showContent = div [ class "container", onMouseEnter (ChangeMainThread thread.id) ]
-  [ div [ class "card my-5", onMouseEnter (ChangeSub thread.subID) ]
+  [ div [ class "card my-5", onMouseEnter (ChangeReplySub thread.subID) ]
     [
       div [class "card-header"] [text ("Posted by " ++ thread.username ++ " on " ++ thread.date ++ " in " ++ getSubName thread.subID subs)]
     , div [ class "thread-body" ] 
