@@ -1,6 +1,6 @@
 from django.http import JsonResponse, HttpResponse
 from django.core.serializers.json import Serializer as Builtin_Serializer
-from .models import Thread
+from .models import Thread, Sub
 import json
 
 class JSONSerializer(Builtin_Serializer):
@@ -42,4 +42,26 @@ def get_thread(request):
     thread_json = JSONSerializer().serialize(thread)
     struct = json.loads(thread_json) 
     data = {"thread" : struct}
+    return JsonResponse(data)
+
+def add_sub(request):
+    json_req = json.loads(request.body)
+    name = json_req.get("name", None)
+    desc = json_req.get("description", False)
+    if name !=  "" and sub_name_is_unique(name):
+        new_sub = Sub(name=name, description=desc)
+        new_sub.save()
+        return HttpResponse('Success')
+    return HttpResponse('Failure')
+
+def name_is_unique(name):
+    for sub in Sub.objects.all():
+        if name.lower() == sub.name.lower():
+            return False
+    return True
+
+def get_subs(request):
+    subs_json = JSONSerializer().serialize(Sub.objects.all())
+    struct = json.loads(subs_json)
+    data = {"subs" : struct}
     return JsonResponse(data)
