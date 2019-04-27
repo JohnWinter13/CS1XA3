@@ -65,3 +65,12 @@ def get_subs(request):
     struct = json.loads(subs_json)
     data = {"subs" : struct}
     return JsonResponse(data)
+
+def get_sub(request):
+    json_req = json.loads(request.body)
+    sub_id = json_req.get('id', 0)
+    sub = Sub.objects.filter(pk=sub_id)
+    sub_json = JSONSerializer().serialize(sub)
+    struct = json.loads(sub_json) 
+    data = {"sub" : struct}
+    return JsonResponse(data)
